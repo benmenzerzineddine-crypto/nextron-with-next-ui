@@ -58,7 +58,7 @@ const mockItems: Item[] = [
 
 const Types = ["TOUS", "KRAFT", "PAPIER COUCHÉ", "TESTLINER-B", "TESTLINER-M"];
 
-export default function HomePage() {
+export default function StockPage() {
     const [type, setType] = useState("TOUS");
   const [search, setSearch] = useState("");
   const [selectionMode, setSelectionMode] = useState<"none" | "single" | "multiple">("single");
