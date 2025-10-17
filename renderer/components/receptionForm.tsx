@@ -1,10 +1,9 @@
-
 import React from "react";
 import { Button, Input, Autocomplete, AutocompleteItem, Modal, ModalContent, ModalHeader, ModalBody, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@nextui-org/react";
-import type { Reception, StockMovement, Item } from "../types/schema";
+import type { Reception, StockMovement, Item, Type, Supplier, Location } from "../types/schema";
 import { computeSku } from "../utils/sku";
 
-type MovementRow = { item_id?: number; quantity: number; weight?: number; type?: string; height?: number; grammage?: number };
+type MovementRow = { item_id?: number; quantity: number; weight?: number; type?: Partial<Type>; height?: number; grammage?: number };
 
 export default function ReceptionForm({
   initial,
@@ -88,16 +87,15 @@ export default function ReceptionForm({
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
             name: "Nouvel article",
-            sku: computeSku(supplier, m.height, m.grammage, m.type),
+            sku: computeSku({ name: supplier }, m.height, m.grammage, m.type),
             weight: m.weight ?? 0,
             height: m.height ?? 0,
             grammage: m.grammage ?? 0,
             current_quantity: 0,
-            type: m.type ?? "",
-            supplier: supplier || undefined,
-            location_id: undefined,
+            type: m.type,
+            supplier: { name: supplier },
             location: { id: 0, name: "Unknown", items: [] },
-          } as Item),
+          } as unknown as Item),
         type: "IN",
         quantity: m.quantity,
         weight: m.weight,
@@ -142,7 +140,7 @@ export default function ReceptionForm({
                 <TableCell>{items.find((it) => it.id === row.item_id)?.name ?? "(personnalisé)"}</TableCell>
                 <TableCell>{row.quantity}</TableCell>
                 <TableCell>{row.weight ?? ""}</TableCell>
-                <TableCell>{row.type ?? ""}</TableCell>
+                <TableCell>{row.type?.name ?? ""}</TableCell>
                 <TableCell>{row.height ?? ""}</TableCell>
                 <TableCell>{row.grammage ?? ""}</TableCell>
                 <TableCell>
@@ -197,8 +195,8 @@ export default function ReceptionForm({
                   defaultItems={Types.map((t) => ({ key: t, label: t }))}
                   label="Type"
                   variant="bordered"
-                  value={editRow.type ?? ""}
-                  onValueChange={(val: any) => setEditRow((r) => ({ ...r, type: val === "" ? undefined : val }))}
+                  value={editRow.type?.name ?? ""}
+                  onValueChange={(val: any) => setEditRow((r) => ({ ...r, type: { name: val } }))}
                 >
                   {(item: any) => <AutocompleteItem key={item.key}>{item.label}</AutocompleteItem>}
                 </Autocomplete>
@@ -224,4 +222,3 @@ export default function ReceptionForm({
     </form>
   );
 }
-

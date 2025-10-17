@@ -21,52 +21,88 @@ import { SearchIcon } from "@/components/icons";
 import ReceptionForm from "@/components/receptionForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
-
-type StockMovement = {
-  id: number;
-  item_id: number;
-  item: {
-    id: number;
-    name: string;
-    sku: string;
-    type: string;
-  };
-  type: "IN" | "OUT";
-  quantity: number;
-  date: string;
-  user_id?: number;
-  notes?: string;
-};
+import type { StockMovement } from "@/types/schema";
 
 const mockMovements: StockMovement[] = [
   {
     id: 1,
     item_id: 1,
-    item: { id: 1, name: "Papier brun haute résistance", sku: "KRAFT-001", type: "KRAFT" },
+    item: {
+      id: 1,
+      created_at: "2025-10-01T10:00:00Z",
+      updated_at: "2025-10-10T12:00:00Z",
+      name: "Papier brun haute résistance",
+      type_id: 1,
+      type: { id: 1, name: "KRAFT", description: "Papier kraft", items: [] },
+      description: "Papier brun haute résistance",
+      sku: "KRAFT-001",
+      supplier_id: 1,
+      supplier: { id: 1, name: "Algérie Papier", origine: "DZ", items: [] },
+      weight: 45,
+      height: 120,
+      grammage: 90,
+      current_quantity: 500,
+      locationid: 1,
+      location: { id: 1, name: "Entrepôt A", description: "Principal", items: [] },
+    },
     type: "IN",
     quantity: 100,
     date: "2025-10-10T10:00:00Z",
     user_id: 1,
-    notes: "Réception fournisseur"
+    notes: "Réception fournisseur",
   },
   {
     id: 2,
     item_id: 2,
-    item: { id: 2, name: "Papier couché brillant A2", sku: "COUCHE-002", type: "PAPIER COUCHÉ" },
+    item: {
+      id: 2,
+      created_at: "2025-10-02T10:00:00Z",
+      updated_at: "2025-10-10T12:00:00Z",
+      name: "Papier couché brillant A2",
+      type_id: 2,
+      type: { id: 2, name: "PAPIER COUCHÉ", description: "Papier couché", items: [] },
+      description: "Papier couché brillant A2",
+      sku: "COUCHE-002",
+      supplier_id: 2,
+      supplier: { id: 2, name: "France Papier", origine: "FR", items: [] },
+      weight: 34.5,
+      height: 100,
+      grammage: 115,
+      current_quantity: 300,
+      locationid: 2,
+      location: { id: 2, name: "Entrepôt B", description: "Secondaire", items: [] },
+    },
     type: "OUT",
     quantity: 50,
     date: "2025-10-11T11:00:00Z",
     user_id: 2,
-    notes: "Consommation atelier"
+    notes: "Consommation atelier",
   },
   {
     id: 3,
     item_id: 1,
-    item: { id: 1, name: "Papier brun haute résistance", sku: "KRAFT-001", type: "KRAFT" },
+    item: {
+      id: 1,
+      created_at: "2025-10-01T10:00:00Z",
+      updated_at: "2025-10-10T12:00:00Z",
+      name: "Papier brun haute résistance",
+      type_id: 1,
+      type: { id: 1, name: "KRAFT", description: "Papier kraft", items: [] },
+      description: "Papier brun haute résistance",
+      sku: "KRAFT-001",
+      supplier_id: 1,
+      supplier: { id: 1, name: "Algérie Papier", origine: "DZ", items: [] },
+      weight: 45,
+      height: 120,
+      grammage: 90,
+      current_quantity: 500,
+      locationid: 1,
+      location: { id: 1, name: "Entrepôt A", description: "Principal", items: [] },
+    },
     type: "OUT",
     quantity: 20,
     date: "2025-10-12T12:00:00Z",
-    user_id: 1
+    user_id: 1,
   },
 ];
 
@@ -156,8 +192,8 @@ export default function MouvementsPage() {
           {filteredList.map((m) => (
             <TableRow key={m.id}>
               <TableCell>{m.id}</TableCell>
-              <TableCell>{m.item?.name ?? m.item_id}</TableCell>
-              <TableCell>{m.item?.sku ?? "-"}</TableCell>
+              <TableCell>{m.item.name}</TableCell>
+              <TableCell>{m.item.sku}</TableCell>
               <TableCell>{m.type}</TableCell>
               <TableCell>{m.quantity}</TableCell>
               <TableCell>{new Date(m.date).toLocaleString()}</TableCell>

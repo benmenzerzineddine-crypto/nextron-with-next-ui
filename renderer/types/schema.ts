@@ -3,18 +3,25 @@ export interface Item {
   created_at: string; // ISO format recommended
   updated_at: string; // ISO format recommended
   name: string;
-  type: string;
+  type_id: number;
+  type: Type;
   description?: string;
   sku: string;
-  supplier?: string;
+  supplier_id?: number;
+  supplier?: Supplier;
   weight: number;
   height: number;
   grammage: number;
   current_quantity: number;
-  location_id?: number;
+  locationid?: number;
   location: Location; // Include full location details
+}
 
-  // Note: SKU convention for synthesized items: supplier + height + grammage + type (joined with '-')
+export interface Type {
+  id: number;
+  name: string;
+  description?: string;
+  items: Item[]; // Items of this type
 }
 
 export interface StockMovement {
@@ -45,7 +52,12 @@ export interface User {
   email: string;
   password_hash: string;
 }
-
+export interface Supplier {
+  id: number;
+  name: string;
+  origine: string;
+  items: Item[]; // Items provided by this supplier
+}
 export interface Location {
   id: number;
   name: string;

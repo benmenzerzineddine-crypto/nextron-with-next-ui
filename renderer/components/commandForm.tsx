@@ -1,11 +1,13 @@
-
 import React from "react";
 import { Input, Button, Select, SelectItem } from "@nextui-org/react";
+import type { Type, Supplier, Location } from "../types/schema";
 
 export default function CommandForm() {
   const [submitted, setSubmitted] = React.useState<any>(null);
 
-  const Types = ["KRAFT", "PAPIER COUCHÉ", "TESTLINER-B", "TESTLINER-M", "FLOUTING"];
+  const Types: Partial<Type>[] = [{ id: 1, name: "KRAFT" }, { id: 2, name: "PAPIER COUCHÉ" }, { id: 3, name: "TESTLINER-B" }, { id: 4, name: "TESTLINER-M" }, { id: 5, name: "FLOUTING" }];
+  const Suppliers: Partial<Supplier>[] = [{ id: 1, name: "Algérie Papier" }, { id: 2, name: "France Papier" }];
+  const Locations: Partial<Location>[] = [{ id: 1, name: "Entrepôt A" }, { id: 2, name: "Entrepôt B" }];
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -26,11 +28,11 @@ export default function CommandForm() {
         <Select
           isRequired
           label="Type"
-          name="type"
+          name="type_id"
           placeholder="Sélectionner le type"
         >
           {Types.map((type) => (
-            <SelectItem key={type}>{type}</SelectItem>
+            <SelectItem key={type.id!}>{type.name}</SelectItem>
           ))}
         </Select>
         <Input
@@ -44,11 +46,15 @@ export default function CommandForm() {
           name="sku"
           placeholder="Code SKU"
         />
-        <Input
+        <Select
           label="Fournisseur"
-          name="supplier"
+          name="supplier_id"
           placeholder="Nom du fournisseur (optionnel)"
-        />
+        >
+          {Suppliers.map((supplier) => (
+            <SelectItem key={supplier.id!}>{supplier.name}</SelectItem>
+          ))}
+        </Select>
         <Input
           isRequired
           label="Poids (kg)"
@@ -77,12 +83,15 @@ export default function CommandForm() {
           type="number"
           placeholder="ex: 500"
         />
-        <Input
-          label="Emplacement (ID)"
+        <Select
+          label="Emplacement"
           name="location_id"
-          type="number"
           placeholder="ID de l'emplacement (optionnel)"
-        />
+        >
+          {Locations.map((location) => (
+            <SelectItem key={location.id!}>{location.name}</SelectItem>
+          ))}
+        </Select>
       </div>
       <Button type="submit" color="primary" className="mt-4 self-end">
         Ajouter commande
@@ -90,4 +99,3 @@ export default function CommandForm() {
     </form>
   );
 }
-
