@@ -1,4 +1,6 @@
 import path from 'path'
+import './db';
+import './api';
 import { app, ipcMain } from 'electron'
 import serve from 'electron-serve'
 import { createWindow } from './helpers'
