@@ -57,8 +57,16 @@ export default function ItemForm({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Input label="Fournisseur ID" name="supplier_id" value={supplierId} onChange={(e: any) => setSupplierId(e.target.value)} />
-        <Input label="Emplacement ID" name="location_id" value={locationId} onChange={(e: any) => setLocationId(e.target.value)} />
+                <Select label="Fournisseur" name="supplier_id" selectedKeys={supplierId ? new Set([supplierId]) : new Set()} onSelectionChange={(s) => setSupplierId(Array.from(s as Set<string>)[0])}>
+          {suppliers.map((s) => (
+            <SelectItem key={String(s.id)}>{s.name}</SelectItem>
+          ))}
+        </Select>
+        <Select label="Emplacement" name="location_id" selectedKeys={locationId ? new Set([locationId]) : new Set()} onSelectionChange={(s) => setLocationId(Array.from(s as Set<string>)[0])}>
+          {locations.map((l) => (
+            <SelectItem key={String(l.id)}>{l.name}</SelectItem>
+          ))}
+        </Select>
         <Input label="Hauteur (cm)" name="height" type="number" value={height ?? ""} onChange={(e: any) => setHeight(e.target.value)} />
         <Input label="Grammage (g/m²)" name="grammage" type="number" value={grammage ?? ""} onChange={(e: any) => setGrammage(e.target.value)} />
         <Input label="Quantité actuelle" name="current_quantity" type="number" value={currentQuantity ?? ""} isReadOnly />

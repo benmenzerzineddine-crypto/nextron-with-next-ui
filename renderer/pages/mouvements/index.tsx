@@ -16,6 +16,8 @@ import {
   useDisclosure,
   Tabs,
   Tab,
+  DateRangePicker,
+  RangeValue
 } from "@nextui-org/react";
 import { SearchIcon } from "@/components/icons";
 import MovementForm from "@/components/movementForm";
@@ -23,6 +25,8 @@ import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
 import type { StockMovement, Item, User } from "@/types/schema";
 import * as dbApi from "@/utils/api";
+import { DateValue } from "@react-types/datepicker";
+import { getLocalTimeZone } from "@internationalized/date";
 
 const useDbMovements = () => {
   const [movements, setMovements] = useState<StockMovement[]>([]);
@@ -63,6 +67,7 @@ const useDbUsers = () => {
 export default function MouvementsPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("TOUS");
+  const [dateRange, setDateRange] = useState<RangeValue<DateValue> | null>(null);
   const [selectionMode, setSelectionMode] = useState<"none" | "single" | "multiple">("single");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { movements, loading, error, refresh } = useDbMovements();
@@ -90,8 +95,14 @@ export default function MouvementsPage() {
           (m.notes?.toLowerCase() || "").includes(s)
       );
     }
+    if (dateRange?.start && dateRange?.end) {
+        filtered = filtered.filter((m) => {
+            const date = new Date(m.date);
+            return date >= dateRange.start.toDate(getLocalTimeZone()) && date <= dateRange.end.toDate(getLocalTimeZone());
+        });
+    }
     return filtered;
-  }, [search, typeFilter, movements]);
+  }, [search, typeFilter, movements, dateRange]);
 
   useEffect(() => {
     const handleKeyDown = () => setSelectionMode("multiple");
@@ -156,6 +167,12 @@ export default function MouvementsPage() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
+            className="flex-1"
+          />
+          <DateRangePicker 
+            value={dateRange}
+            onChange={setDateRange}
+            size="md"
             className="flex-1"
           />
           <Button color="primary" onPress={openNewModal}>

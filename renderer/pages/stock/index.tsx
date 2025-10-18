@@ -8,7 +8,6 @@ import Head from "next/head";
 import type { Item, Type, Supplier, Location } from "@/types/schema";
 import * as dbApi from "@/utils/api";
 
-// Items, types, suppliers, locations from DB
 const useDbItems = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
@@ -17,15 +16,43 @@ const useDbItems = () => {
     setLoading(true);
     setError(null);
     const res = await dbApi.getAll<Item>("item");
-  if (res.success) setItems(res.data);
-  else if ('error' in res) setError(res.error);
+    if (res.success) setItems(res.data);
+    else if ("error" in res) setError(res.error);
     setLoading(false);
   };
   useEffect(() => { refresh(); }, []);
   return { items, loading, error, refresh };
 };
 
-const Types = ["TOUS", "KRAFT", "PAPIER COUCHÉ", "TESTLINER-B", "TESTLINER-M"];
+const useDbTypes = () => {
+  const [types, setTypes] = useState<Type[]>([]);
+  const refresh = async () => {
+    const res = await dbApi.getAll<Type>("type");
+    if (res.success) setTypes(res.data);
+  };
+  useEffect(() => { refresh(); }, []);
+  return { types, refresh };
+};
+
+const useDbSuppliers = () => {
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const refresh = async () => {
+    const res = await dbApi.getAll<Supplier>("supplier");
+    if (res.success) setSuppliers(res.data);
+  };
+  useEffect(() => { refresh(); }, []);
+  return { suppliers, refresh };
+};
+
+const useDbLocations = () => {
+  const [locations, setLocations] = useState<Location[]>([]);
+  const refresh = async () => {
+    const res = await dbApi.getAll<Location>("location");
+    if (res.success) setLocations(res.data);
+  };
+  useEffect(() => { refresh(); }, []);
+  return { locations, refresh };
+};
 
 export default function StockPage() {
   const [type, setType] = useState("TOUS");
@@ -33,6 +60,9 @@ export default function StockPage() {
   const [selectionMode, setSelectionMode] = useState<"none" | "single" | "multiple">("single");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { items, loading, error, refresh } = useDbItems();
+  const { types } = useDbTypes();
+  const { suppliers } = useDbSuppliers();
+  const { locations } = useDbLocations();
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [deletingItem, setDeletingItem] = useState<Item | null>(null);
   const {
@@ -40,11 +70,6 @@ export default function StockPage() {
     onOpen: onDeleteConfirmOpen,
     onOpenChange: onDeleteConfirmOpenChange,
   } = useDisclosure();
-
-  // Derive options for selects
-  const typesOptions = useMemo(() => Array.from(new Map(items.map((it) => [it.Type?.id!, it.Type!])).values()) as Type[], [items]);
-  const suppliersOptions = useMemo(() => Array.from(new Map(items.map((it) => [it.Supplier?.id!, it.Supplier!])).values()) as Supplier[], [items]);
-  const locationsOptions = useMemo(() => Array.from(new Map(items.map((it) => [it.Location?.id!, it.Location!])).values()) as Location[], [items]);
 
   const filteredList = useMemo(() => {
     let filtered = items;
@@ -98,16 +123,6 @@ export default function StockPage() {
     }
   };
 
-  const handleCalculateQuantity = (movements: any[]) => {
-    if (!movements) return 0;
-    return movements.reduce((acc, m) => acc + m.quantity, 0);
-  };
-
-  const handleCalculateWeight = (movements: any[]) => {
-    if (!movements) return 0;
-    return movements.reduce((acc, m) => acc + (m.weight || 0), 0);
-  }
-
   return (
     <DefaultLayout>
       <Head>
@@ -124,8 +139,9 @@ export default function StockPage() {
           onSelectionChange={(key) => setType(String(key))}
           className="mb-2"
         >
-          {Types.map((t) => (
-            <Tab key={t} title={t} />
+          <Tab key="TOUS" title="TOUS" />
+          {types.map((t) => (
+            <Tab key={t.name} title={t.name} />
           ))}
         </Tabs>
         <section className="flex gap-4 items-end">
@@ -155,7 +171,6 @@ export default function StockPage() {
             <TableColumn>Description</TableColumn>
             <TableColumn>SKU</TableColumn>
             <TableColumn>Fournisseur</TableColumn>
-            <TableColumn>Poids (kg)</TableColumn>
             <TableColumn>Largeur (cm)</TableColumn>
             <TableColumn>Grammage (g/m²)</TableColumn>
             <TableColumn>Quantité</TableColumn>
@@ -171,10 +186,9 @@ export default function StockPage() {
                 <TableCell>{item.description}</TableCell>
                 <TableCell>{item.sku}</TableCell>
                 <TableCell>{item.Supplier?.name}</TableCell>
-                <TableCell>{handleCalculateQuantity(item.Mouvements)}</TableCell>
                 <TableCell>{item.height}</TableCell>
                 <TableCell>{item.grammage}</TableCell>
-                <TableCell>{handleCalculateQuantity(item.Mouvements)}</TableCell>
+                <TableCell>{item.current_quantity}</TableCell>
                 <TableCell>{item.Location?.name}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
@@ -208,9 +222,9 @@ export default function StockPage() {
                 <ModalBody>
                   <ItemForm
                     initial={editingItem}
-                    types={typesOptions}
-                    suppliers={suppliersOptions}
-                    locations={locationsOptions}
+                    types={types}
+                    suppliers={suppliers}
+                    locations={locations}
                     onCancel={() => onClose()}
                     onSubmit={async (payload) => {
                       const res = editingItem

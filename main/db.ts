@@ -143,14 +143,6 @@ const Reception = sequelize.define('Reception', {
     autoIncrement: true,
     primaryKey: true,
   },
-  supplier: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-  quantity: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-  },
   date: {
     type: DataTypes.DATE,
     allowNull: false,
