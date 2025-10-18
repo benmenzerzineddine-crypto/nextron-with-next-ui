@@ -2,63 +2,54 @@
 import { useState, useMemo, useEffect } from "react";
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Input, Button, Modal, ModalContent, ModalHeader, ModalBody, useDisclosure, Tabs, Tab } from "@nextui-org/react";
 import { SearchIcon } from "@/components/icons";
-import CommandForm from "@/components/commandForm";
+import ItemForm from "@/components/itemForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
 import type { Item, Type, Supplier, Location } from "@/types/schema";
+import * as dbApi from "@/utils/api";
 
-const mockItems: Item[] = [
-  {
-    id: 1,
-    created_at: "2025-10-01T10:00:00Z",
-    updated_at: "2025-10-10T12:00:00Z",
-    name: "Papier brun haute résistance",
-    type_id: 1,
-    type: { id: 1, name: "KRAFT", description: "Papier kraft", items: [] },
-    description: "Papier brun haute résistance",
-    sku: "KRAFT-001",
-    supplier_id: 1,
-    supplier: { id: 1, name: "Algérie Papier", origine: "DZ", items: [] },
-    weight: 45,
-    height: 120,
-    grammage: 90,
-    current_quantity: 500,
-    locationid: 1,
-    location: { id: 1, name: "Entrepôt A", description: "Principal", items: [] },
-  },
-  {
-    id: 2,
-    created_at: "2025-10-02T10:00:00Z",
-    updated_at: "2025-10-10T12:00:00Z",
-    name: "Papier couché brillant A2",
-    type_id: 2,
-    type: { id: 2, name: "PAPIER COUCHÉ", description: "Papier couché", items: [] },
-    description: "Papier couché brillant A2",
-    sku: "COUCHE-002",
-    supplier_id: 2,
-    supplier: { id: 2, name: "France Papier", origine: "FR", items: [] },
-    weight: 34.5,
-    height: 100,
-    grammage: 115,
-    current_quantity: 300,
-    locationid: 2,
-    location: { id: 2, name: "Entrepôt B", description: "Secondaire", items: [] },
-  },
-  // ... add more items as needed
-];
+// Items, types, suppliers, locations from DB
+const useDbItems = () => {
+  const [items, setItems] = useState<Item[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const refresh = async () => {
+    setLoading(true);
+    setError(null);
+    const res = await dbApi.getAll<Item>("item");
+  if (res.success) setItems(res.data);
+  else if ('error' in res) setError(res.error);
+    setLoading(false);
+  };
+  useEffect(() => { refresh(); }, []);
+  return { items, loading, error, refresh };
+};
 
 const Types = ["TOUS", "KRAFT", "PAPIER COUCHÉ", "TESTLINER-B", "TESTLINER-M"];
 
 export default function StockPage() {
-    const [type, setType] = useState("TOUS");
+  const [type, setType] = useState("TOUS");
   const [search, setSearch] = useState("");
   const [selectionMode, setSelectionMode] = useState<"none" | "single" | "multiple">("single");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const { items, loading, error, refresh } = useDbItems();
+  const [editingItem, setEditingItem] = useState<Item | null>(null);
+  const [deletingItem, setDeletingItem] = useState<Item | null>(null);
+  const {
+    isOpen: isDeleteConfirmOpen,
+    onOpen: onDeleteConfirmOpen,
+    onOpenChange: onDeleteConfirmOpenChange,
+  } = useDisclosure();
+
+  // Derive options for selects
+  const typesOptions = useMemo(() => Array.from(new Map(items.map((it) => [it.Type?.id!, it.Type!])).values()) as Type[], [items]);
+  const suppliersOptions = useMemo(() => Array.from(new Map(items.map((it) => [it.Supplier?.id!, it.Supplier!])).values()) as Supplier[], [items]);
+  const locationsOptions = useMemo(() => Array.from(new Map(items.map((it) => [it.Location?.id!, it.Location!])).values()) as Location[], [items]);
 
   const filteredList = useMemo(() => {
-    let filtered = mockItems;
+    let filtered = items;
     if (type !== "TOUS") {
-      filtered = filtered.filter((item) => item.type.name === type);
+      filtered = filtered.filter((item) => item.Type.name === type);
     }
     if (search.trim() !== "") {
       const s = search.toLocaleLowerCase();
@@ -70,7 +61,7 @@ export default function StockPage() {
       );
     }
     return filtered;
-  }, [type, search]);
+  }, [type, search, items]);
 
   useEffect(() => {
     const handleKeyDown = () => setSelectionMode("multiple");
@@ -82,91 +73,186 @@ export default function StockPage() {
       window.removeEventListener("keyup", handleKeyUp);
     };
   }, []);
-    return (
-        <DefaultLayout>
-            <Head>
-                <title>Home - Nextron (with-next-ui)</title>
-            </Head>
 
-            <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold mb-2">Stock</h1>
-      <Tabs
-        fullWidth
-        aria-label="Filtrer par type"
-        variant="solid"
-        selectedKey={type}
-        onSelectionChange={key => setType(String(key))}
-        className="mb-2"
-      >
-        {Types.map((t) => (
-          <Tab key={t} title={t} />
-        ))}
-      </Tabs>
-      <section className="flex gap-4 items-end">
-        <Input
-          labelPlacement="outside"
-          placeholder="Recherche (nom, description, SKU)"
-          startContent={<SearchIcon className="text-2xl text-default-400 pointer-events-none shrink-0" />}
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1"
-        />
-        <Button color="primary" onPress={onOpen}>
-          Nouvel article
-        </Button>
-      </section>
-      <Table
-        aria-label="Liste des articles (bobines)"
-        selectionMode={selectionMode}
-        showSelectionCheckboxes={false}
-      >
-        <TableHeader>
-          <TableColumn>ID</TableColumn>
-          <TableColumn>Nom</TableColumn>
-          <TableColumn>Type</TableColumn>
-          <TableColumn>Description</TableColumn>
-          <TableColumn>SKU</TableColumn>
-          <TableColumn>Fournisseur</TableColumn>
-          <TableColumn>Poids (kg)</TableColumn>
-          <TableColumn>Largeur (cm)</TableColumn>
-          <TableColumn>Grammage (g/m²)</TableColumn>
-          <TableColumn>Quantité</TableColumn>
-          <TableColumn>Emplacement</TableColumn>
-        </TableHeader>
-        <TableBody>
-          {filteredList.map((item) => (
-            <TableRow key={item.id}>
-              <TableCell>{item.id}</TableCell>
-              <TableCell>{item.name}</TableCell>
-              <TableCell>{item.type.name}</TableCell>
-              <TableCell>{item.description}</TableCell>
-              <TableCell>{item.sku}</TableCell>
-              <TableCell>{item.supplier.name}</TableCell>
-              <TableCell>{item.weight}</TableCell>
-              <TableCell>{item.height}</TableCell>
-              <TableCell>{item.grammage}</TableCell>
-              <TableCell>{item.current_quantity}</TableCell>
-              <TableCell>{item.location.name}</TableCell>
-            </TableRow>
+  const openEditModal = (item: Item) => {
+    setEditingItem(item);
+    onOpen();
+  };
+
+  const openNewModal = () => {
+    setEditingItem(null);
+    onOpen();
+  };
+
+  const openDeleteConfirm = (item: Item) => {
+    setDeletingItem(item);
+    onDeleteConfirmOpen();
+  };
+
+  const handleDelete = async () => {
+    if (deletingItem) {
+      const res = await dbApi.remove("item", deletingItem.id);
+      if (!res.success && "error" in res) alert("Erreur: " + res.error);
+      else await refresh();
+      onDeleteConfirmOpenChange();
+    }
+  };
+
+  const handleCalculateQuantity = (movements: any[]) => {
+    if (!movements) return 0;
+    return movements.reduce((acc, m) => acc + m.quantity, 0);
+  };
+
+  const handleCalculateWeight = (movements: any[]) => {
+    if (!movements) return 0;
+    return movements.reduce((acc, m) => acc + (m.weight || 0), 0);
+  }
+
+  return (
+    <DefaultLayout>
+      <Head>
+        <title>Stock - Nextron (with-next-ui)</title>
+      </Head>
+
+      <div className="flex flex-col gap-4">
+        <h1 className="text-2xl font-bold mb-2">Stock</h1>
+        <Tabs
+          fullWidth
+          aria-label="Filtrer par type"
+          variant="solid"
+          selectedKey={type}
+          onSelectionChange={(key) => setType(String(key))}
+          className="mb-2"
+        >
+          {Types.map((t) => (
+            <Tab key={t} title={t} />
           ))}
-        </TableBody>
-      </Table>
-      <Modal size="5xl" isOpen={isOpen} onOpenChange={onOpenChange}>
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">
-                Nouvel article
-              </ModalHeader>
-              <ModalBody>
-                <CommandForm />
-              </ModalBody>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
-    </div>
-        </DefaultLayout>
-    );
+        </Tabs>
+        <section className="flex gap-4 items-end">
+          <Input
+            labelPlacement="outside"
+            placeholder="Recherche (nom, description, SKU)"
+            startContent={<SearchIcon className="text-2xl text-default-400 pointer-events-none shrink-0" />}
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1"
+          />
+          <Button color="primary" onPress={openNewModal}>
+            Nouvel article
+          </Button>
+        </section>
+        {error && <div className="text-red-500">Erreur: {error}</div>}
+        <Table
+          aria-label="Liste des articles (bobines)"
+          selectionMode={selectionMode}
+          showSelectionCheckboxes={false}
+        >
+          <TableHeader>
+            <TableColumn>ID</TableColumn>
+            <TableColumn>Nom</TableColumn>
+            <TableColumn>Type</TableColumn>
+            <TableColumn>Description</TableColumn>
+            <TableColumn>SKU</TableColumn>
+            <TableColumn>Fournisseur</TableColumn>
+            <TableColumn>Poids (kg)</TableColumn>
+            <TableColumn>Largeur (cm)</TableColumn>
+            <TableColumn>Grammage (g/m²)</TableColumn>
+            <TableColumn>Quantité</TableColumn>
+            <TableColumn>Emplacement</TableColumn>
+            <TableColumn>Actions</TableColumn>
+          </TableHeader>
+          <TableBody isLoading={loading} emptyContent={"Aucun article à afficher"}>
+            {filteredList.map((item) => (
+              <TableRow key={item.id}>
+                <TableCell>{item.id}</TableCell>
+                <TableCell>{item.name}</TableCell>
+                <TableCell>{item.Type?.name}</TableCell>
+                <TableCell>{item.description}</TableCell>
+                <TableCell>{item.sku}</TableCell>
+                <TableCell>{item.Supplier?.name}</TableCell>
+                <TableCell>{handleCalculateQuantity(item.Mouvements)}</TableCell>
+                <TableCell>{item.height}</TableCell>
+                <TableCell>{item.grammage}</TableCell>
+                <TableCell>{handleCalculateQuantity(item.Mouvements)}</TableCell>
+                <TableCell>{item.Location?.name}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button
+                      color="primary"
+                      size="sm"
+                      onPress={() => openEditModal(item)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      color="danger"
+                      size="sm"
+                      onPress={() => openDeleteConfirm(item)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <Modal size="5xl" isOpen={isOpen} onOpenChange={onOpenChange}>
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1">
+                  {editingItem ? "Modifier l'article" : "Nouvel article"}
+                </ModalHeader>
+                <ModalBody>
+                  <ItemForm
+                    initial={editingItem}
+                    types={typesOptions}
+                    suppliers={suppliersOptions}
+                    locations={locationsOptions}
+                    onCancel={() => onClose()}
+                    onSubmit={async (payload) => {
+                      const res = editingItem
+                        ? await dbApi.update<Item>("item", editingItem.id, payload)
+                        : await dbApi.create<Item>("item", payload);
+                      if (!res.success && "error" in res) alert("Erreur: " + res.error);
+                      else await refresh();
+                      onClose();
+                    }}
+                  />
+                </ModalBody>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+        <Modal
+          isOpen={isDeleteConfirmOpen}
+          onOpenChange={onDeleteConfirmOpenChange}
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader>Confirmer la suppression</ModalHeader>
+                <ModalBody>
+                  <p>
+                    Êtes-vous sûr de vouloir supprimer l'article #
+                    {deletingItem?.id}?
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <Button color="default" onPress={onClose}>
+                      Annuler
+                    </Button>
+                    <Button color="danger" onPress={handleDelete}>
+                      Supprimer
+                    </Button>
+                  </div>
+                </ModalBody>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+      </div>
+    </DefaultLayout>
+  );
 }

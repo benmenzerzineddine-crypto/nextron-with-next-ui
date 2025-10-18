@@ -24,11 +24,27 @@ export const siteConfig = {
       label: "Consommation",
       href: "/consommation",
     },
+    {
+      label: "Fournisseurs",
+      href: "/suppliers",
+    },
+    {
+      label: "Utilisateurs",
+      href: "/users",
+    },
+    {
+      label: "Emplacements",
+      href: "/locations",
+    },
+    {
+      label: "Types",
+      href: "/types",
+    },
   ],
   navMenuItems: [
-  {
+    {
       label: "Accueil",
-      href: "/",
+      href: "/home",
     },
     {
       label: "Stock",
@@ -46,6 +62,21 @@ export const siteConfig = {
       label: "Consommation",
       href: "/consommation",
     },
+    {
+      label: "Fournisseurs",
+      href: "/suppliers",
+    },
+    {
+      label: "Utilisateurs",
+      href: "/users",
+    },
+    {
+      label: "Emplacements",
+      href: "/locations",
+    },
+    {
+      label: "Types",
+      href: "/types",
+    },
   ],
-
 };

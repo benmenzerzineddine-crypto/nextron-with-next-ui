@@ -100,10 +100,6 @@ const Item = sequelize.define('Item', {
     allowNull: false,
     unique: true,
   },
-  weight: {
-    type: DataTypes.FLOAT,
-    allowNull: false,
-  },
   height: {
     type: DataTypes.FLOAT,
     allowNull: false,
@@ -111,11 +107,6 @@ const Item = sequelize.define('Item', {
   grammage: {
     type: DataTypes.FLOAT,
     allowNull: false,
-  },
-  current_quantity: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    defaultValue: 0,
   },
 });
 
@@ -190,8 +181,11 @@ User.hasMany(StockMovement, { foreignKey: 'user_id' });
 StockMovement.belongsTo(User, { foreignKey: 'user_id' });
 
 // Reception relationships
-Reception.hasMany(StockMovement, { foreignKey: 'reception_id' });
+Reception.hasMany(StockMovement, { foreignKey: 'reception_id', onDelete: 'CASCADE' });
 StockMovement.belongsTo(Reception, { foreignKey: 'reception_id' });
+
+Supplier.hasMany(Reception, { foreignKey: 'supplier_id' });
+Reception.belongsTo(Supplier, { foreignKey: 'supplier_id' });
 
 User.hasMany(Reception, { foreignKey: 'user_id' });
 Reception.belongsTo(User, { foreignKey: 'user_id' });

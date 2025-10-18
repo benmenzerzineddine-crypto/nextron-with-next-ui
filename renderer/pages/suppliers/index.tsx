@@ -16,63 +16,37 @@ import {
   useDisclosure,
 } from "@nextui-org/react";
 import { SearchIcon } from "@/components/icons";
-import ReceptionForm from "@/components/receptionForm";
+import SupplierForm from "@/components/supplierForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
-import type { Reception, StockMovement, Item, Supplier } from "@/types/schema";
+import type { Supplier } from "@/types/schema";
 import * as dbApi from "@/utils/api";
 
-const useDbReceptions = () => {
-  const [receptions, setReceptions] = useState<Reception[]>([]);
+const useDbSuppliers = () => {
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const refresh = async () => {
     setLoading(true);
     setError(null);
-    const res = await dbApi.getAll<Reception>("reception");
-    if (res.success) setReceptions(res.data);
+    const res = await dbApi.getAll<Supplier>("supplier");
+    if (res.success) setSuppliers(res.data);
     else if ("error" in res) setError(res.error);
     setLoading(false);
   };
   useEffect(() => {
     refresh();
   }, []);
-  return { receptions, loading, error, refresh };
+  return { suppliers, loading, error, refresh };
 };
 
-const useDbItems = () => {
-  const [items, setItems] = useState<Item[]>([]);
-  const refresh = async () => {
-    const res = await dbApi.getAll<Item>("item");
-    if (res.success) setItems(res.data);
-  };
-  useEffect(() => {
-    refresh();
-  }, []);
-  return { items, refresh };
-};
-
-const useDbSuppliers = () => {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const refresh = async () => {
-    const res = await dbApi.getAll<Supplier>("supplier");
-    if (res.success) setSuppliers(res.data);
-  };
-  useEffect(() => {
-    refresh();
-  }, []);
-  return { suppliers, refresh };
-};
-
-export default function ReceptionsPage() {
+export default function SuppliersPage() {
   const [search, setSearch] = useState("");
   const [selectionMode, setSelectionMode] = useState<"none" | "single" | "multiple">("single");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const { receptions, loading, error, refresh } = useDbReceptions();
-  const { items } = useDbItems();
-  const { suppliers } = useDbSuppliers();
-  const [editingReception, setEditingReception] = useState<Reception | null>(null);
-  const [deletingReception, setDeletingReception] = useState<Reception | null>(null);
+  const { suppliers, loading, error, refresh } = useDbSuppliers();
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+  const [deletingSupplier, setDeletingSupplier] = useState<Supplier | null>(null);
   const {
     isOpen: isDeleteConfirmOpen,
     onOpen: onDeleteConfirmOpen,
@@ -80,18 +54,17 @@ export default function ReceptionsPage() {
   } = useDisclosure();
 
   const filteredList = useMemo(() => {
-    let filtered = receptions;
+    let filtered = suppliers;
     if (search.trim()) {
       const s = search.toLowerCase();
       filtered = filtered.filter(
-        (r) =>
-          (r.Supplier?.name?.toLowerCase() || "").includes(s) ||
-          (r.notes?.toLowerCase() || "").includes(s) ||
-          String(r.id).includes(s)
+        (s) =>
+          (s.name?.toLowerCase() || "").includes(search) ||
+          (s.origine?.toLowerCase() || "").includes(search)
       );
     }
     return filtered;
-  }, [receptions, search]);
+  }, [suppliers, search]);
 
   useEffect(() => {
     const handleKeyDown = () => setSelectionMode("multiple");
@@ -104,29 +77,24 @@ export default function ReceptionsPage() {
     };
   }, []);
 
-  const CalculateQty = (mouvements: StockMovement[]) => {
-    if (!mouvements) return 0;
-    return mouvements.reduce((acc, m) => acc + m.quantity, 0);
-  };
-
-  const openEditModal = (reception: Reception) => {
-    setEditingReception(reception);
+  const openEditModal = (supplier: Supplier) => {
+    setEditingSupplier(supplier);
     onOpen();
   };
 
   const openNewModal = () => {
-    setEditingReception(null);
+    setEditingSupplier(null);
     onOpen();
   };
 
-  const openDeleteConfirm = (reception: Reception) => {
-    setDeletingReception(reception);
+  const openDeleteConfirm = (supplier: Supplier) => {
+    setDeletingSupplier(supplier);
     onDeleteConfirmOpen();
   };
 
   const handleDelete = async () => {
-    if (deletingReception) {
-      const res = await dbApi.remove("reception", deletingReception.id);
+    if (deletingSupplier) {
+      const res = await dbApi.remove("supplier", deletingSupplier.id);
       if (!res.success && "error" in res) alert("Erreur: " + res.error);
       else await refresh();
       onDeleteConfirmOpenChange();
@@ -136,15 +104,15 @@ export default function ReceptionsPage() {
   return (
     <DefaultLayout>
       <Head>
-        <title>Receptions - Nextron (with-next-ui)</title>
+        <title>Fournisseurs - Nextron (with-next-ui)</title>
       </Head>
 
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold mb-2">Bons de réception</h1>
+        <h1 className="text-2xl font-bold mb-2">Fournisseurs</h1>
         <section className="flex gap-4 items-end">
           <Input
             labelPlacement="outside"
-            placeholder="Recherche (fournisseur, notes, id)"
+            placeholder="Recherche (nom, origine)"
             startContent={
               <SearchIcon className="text-2xl text-default-400 pointer-events-none shrink-0" />
             }
@@ -154,46 +122,40 @@ export default function ReceptionsPage() {
             className="flex-1"
           />
           <Button color="primary" onPress={openNewModal}>
-            Nouveau bon de réception
+            Nouveau fournisseur
           </Button>
         </section>
         {error && <div className="text-red-500">Erreur: {error}</div>}
         <Table
-          aria-label="Liste des bons de réception"
+          aria-label="Liste des fournisseurs"
           selectionMode={selectionMode}
           showSelectionCheckboxes={false}
         >
           <TableHeader>
             <TableColumn>ID</TableColumn>
-            <TableColumn>Fournisseur</TableColumn>
-            <TableColumn>Quantités</TableColumn>
-            <TableColumn>Date</TableColumn>
-            <TableColumn>Utilisateur</TableColumn>
-            <TableColumn>Notes</TableColumn>
+            <TableColumn>Nom</TableColumn>
+            <TableColumn>Origine</TableColumn>
             <TableColumn>Actions</TableColumn>
           </TableHeader>
-          <TableBody isLoading={loading} emptyContent={"Aucune réception à afficher"}>
-            {filteredList.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>{r.id}</TableCell>
-                <TableCell>{r.Supplier?.name ?? "-"}</TableCell>
-                <TableCell>{CalculateQty(r.Mouvement)}</TableCell>
-                <TableCell>{new Date(r.date).toLocaleString()}</TableCell>
-                <TableCell>{r.user_id ?? "-"}</TableCell>
-                <TableCell>{r.notes ?? ""}</TableCell>
+          <TableBody isLoading={loading} emptyContent={"Aucun fournisseur à afficher"}>
+            {filteredList.map((s) => (
+              <TableRow key={s.id}>
+                <TableCell>{s.id}</TableCell>
+                <TableCell>{s.name}</TableCell>
+                <TableCell>{s.origine}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
                     <Button
                       color="primary"
                       size="sm"
-                      onPress={() => openEditModal(r)}
+                      onPress={() => openEditModal(s)}
                     >
                       Edit
                     </Button>
                     <Button
                       color="danger"
                       size="sm"
-                      onPress={() => openDeleteConfirm(r)}
+                      onPress={() => openDeleteConfirm(s)}
                     >
                       Delete
                     </Button>
@@ -203,31 +165,29 @@ export default function ReceptionsPage() {
             ))}
           </TableBody>
         </Table>
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl">
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl">
           <ModalContent>
             {(onClose) => (
               <>
                 <ModalHeader>
                   <h2 className="text-xl font-bold">
-                    {editingReception
-                      ? "Modifier le bon de réception"
-                      : "Nouveau bon de réception"}
+                    {editingSupplier
+                      ? "Modifier le fournisseur"
+                      : "Nouveau fournisseur"}
                   </h2>
                 </ModalHeader>
                 <ModalBody>
-                  <ReceptionForm
-                    items={items}
-                    suppliers={suppliers}
-                    initial={editingReception}
+                  <SupplierForm
+                    initial={editingSupplier}
                     onCancel={() => onClose()}
                     onSubmit={async (payload) => {
-                      const res = editingReception
-                        ? await dbApi.update<Reception>(
-                            "reception",
-                            editingReception.id,
+                      const res = editingSupplier
+                        ? await dbApi.update<Supplier>(
+                            "supplier",
+                            editingSupplier.id,
                             payload
                           )
-                        : await dbApi.create<Reception>("reception", payload);
+                        : await dbApi.create<Supplier>("supplier", payload);
                       if (!res.success && "error" in res)
                         alert("Erreur: " + res.error);
                       else await refresh();
@@ -249,8 +209,8 @@ export default function ReceptionsPage() {
                 <ModalHeader>Confirmer la suppression</ModalHeader>
                 <ModalBody>
                   <p>
-                    Êtes-vous sûr de vouloir supprimer la réception #
-                    {deletingReception?.id}?
+                    Êtes-vous sûr de vouloir supprimer le fournisseur #
+                    {deletingSupplier?.id}?
                   </p>
                   <div className="flex justify-end gap-2">
                     <Button color="default" onPress={onClose}>

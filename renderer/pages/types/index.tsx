@@ -16,63 +16,37 @@ import {
   useDisclosure,
 } from "@nextui-org/react";
 import { SearchIcon } from "@/components/icons";
-import ReceptionForm from "@/components/receptionForm";
+import TypeForm from "@/components/typeForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
-import type { Reception, StockMovement, Item, Supplier } from "@/types/schema";
+import type { Type } from "@/types/schema";
 import * as dbApi from "@/utils/api";
 
-const useDbReceptions = () => {
-  const [receptions, setReceptions] = useState<Reception[]>([]);
+const useDbTypes = () => {
+  const [types, setTypes] = useState<Type[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const refresh = async () => {
     setLoading(true);
     setError(null);
-    const res = await dbApi.getAll<Reception>("reception");
-    if (res.success) setReceptions(res.data);
+    const res = await dbApi.getAll<Type>("type");
+    if (res.success) setTypes(res.data);
     else if ("error" in res) setError(res.error);
     setLoading(false);
   };
   useEffect(() => {
     refresh();
   }, []);
-  return { receptions, loading, error, refresh };
+  return { types, loading, error, refresh };
 };
 
-const useDbItems = () => {
-  const [items, setItems] = useState<Item[]>([]);
-  const refresh = async () => {
-    const res = await dbApi.getAll<Item>("item");
-    if (res.success) setItems(res.data);
-  };
-  useEffect(() => {
-    refresh();
-  }, []);
-  return { items, refresh };
-};
-
-const useDbSuppliers = () => {
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const refresh = async () => {
-    const res = await dbApi.getAll<Supplier>("supplier");
-    if (res.success) setSuppliers(res.data);
-  };
-  useEffect(() => {
-    refresh();
-  }, []);
-  return { suppliers, refresh };
-};
-
-export default function ReceptionsPage() {
+export default function TypesPage() {
   const [search, setSearch] = useState("");
   const [selectionMode, setSelectionMode] = useState<"none" | "single" | "multiple">("single");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const { receptions, loading, error, refresh } = useDbReceptions();
-  const { items } = useDbItems();
-  const { suppliers } = useDbSuppliers();
-  const [editingReception, setEditingReception] = useState<Reception | null>(null);
-  const [deletingReception, setDeletingReception] = useState<Reception | null>(null);
+  const { types, loading, error, refresh } = useDbTypes();
+  const [editingType, setEditingType] = useState<Type | null>(null);
+  const [deletingType, setDeletingType] = useState<Type | null>(null);
   const {
     isOpen: isDeleteConfirmOpen,
     onOpen: onDeleteConfirmOpen,
@@ -80,18 +54,17 @@ export default function ReceptionsPage() {
   } = useDisclosure();
 
   const filteredList = useMemo(() => {
-    let filtered = receptions;
+    let filtered = types;
     if (search.trim()) {
       const s = search.toLowerCase();
       filtered = filtered.filter(
-        (r) =>
-          (r.Supplier?.name?.toLowerCase() || "").includes(s) ||
-          (r.notes?.toLowerCase() || "").includes(s) ||
-          String(r.id).includes(s)
+        (t) =>
+          (t.name?.toLowerCase() || "").includes(s) ||
+          (t.description?.toLowerCase() || "").includes(s)
       );
     }
     return filtered;
-  }, [receptions, search]);
+  }, [types, search]);
 
   useEffect(() => {
     const handleKeyDown = () => setSelectionMode("multiple");
@@ -104,29 +77,24 @@ export default function ReceptionsPage() {
     };
   }, []);
 
-  const CalculateQty = (mouvements: StockMovement[]) => {
-    if (!mouvements) return 0;
-    return mouvements.reduce((acc, m) => acc + m.quantity, 0);
-  };
-
-  const openEditModal = (reception: Reception) => {
-    setEditingReception(reception);
+  const openEditModal = (type: Type) => {
+    setEditingType(type);
     onOpen();
   };
 
   const openNewModal = () => {
-    setEditingReception(null);
+    setEditingType(null);
     onOpen();
   };
 
-  const openDeleteConfirm = (reception: Reception) => {
-    setDeletingReception(reception);
+  const openDeleteConfirm = (type: Type) => {
+    setDeletingType(type);
     onDeleteConfirmOpen();
   };
 
   const handleDelete = async () => {
-    if (deletingReception) {
-      const res = await dbApi.remove("reception", deletingReception.id);
+    if (deletingType) {
+      const res = await dbApi.remove("type", deletingType.id);
       if (!res.success && "error" in res) alert("Erreur: " + res.error);
       else await refresh();
       onDeleteConfirmOpenChange();
@@ -136,15 +104,15 @@ export default function ReceptionsPage() {
   return (
     <DefaultLayout>
       <Head>
-        <title>Receptions - Nextron (with-next-ui)</title>
+        <title>Types - Nextron (with-next-ui)</title>
       </Head>
 
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold mb-2">Bons de réception</h1>
+        <h1 className="text-2xl font-bold mb-2">Types</h1>
         <section className="flex gap-4 items-end">
           <Input
             labelPlacement="outside"
-            placeholder="Recherche (fournisseur, notes, id)"
+            placeholder="Recherche (nom, description)"
             startContent={
               <SearchIcon className="text-2xl text-default-400 pointer-events-none shrink-0" />
             }
@@ -154,46 +122,40 @@ export default function ReceptionsPage() {
             className="flex-1"
           />
           <Button color="primary" onPress={openNewModal}>
-            Nouveau bon de réception
+            Nouveau type
           </Button>
         </section>
         {error && <div className="text-red-500">Erreur: {error}</div>}
         <Table
-          aria-label="Liste des bons de réception"
+          aria-label="Liste des types"
           selectionMode={selectionMode}
           showSelectionCheckboxes={false}
         >
           <TableHeader>
             <TableColumn>ID</TableColumn>
-            <TableColumn>Fournisseur</TableColumn>
-            <TableColumn>Quantités</TableColumn>
-            <TableColumn>Date</TableColumn>
-            <TableColumn>Utilisateur</TableColumn>
-            <TableColumn>Notes</TableColumn>
+            <TableColumn>Nom</TableColumn>
+            <TableColumn>Description</TableColumn>
             <TableColumn>Actions</TableColumn>
           </TableHeader>
-          <TableBody isLoading={loading} emptyContent={"Aucune réception à afficher"}>
-            {filteredList.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell>{r.id}</TableCell>
-                <TableCell>{r.Supplier?.name ?? "-"}</TableCell>
-                <TableCell>{CalculateQty(r.Mouvement)}</TableCell>
-                <TableCell>{new Date(r.date).toLocaleString()}</TableCell>
-                <TableCell>{r.user_id ?? "-"}</TableCell>
-                <TableCell>{r.notes ?? ""}</TableCell>
+          <TableBody isLoading={loading} emptyContent={"Aucun type à afficher"}>
+            {filteredList.map((t) => (
+              <TableRow key={t.id}>
+                <TableCell>{t.id}</TableCell>
+                <TableCell>{t.name}</TableCell>
+                <TableCell>{t.description}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
                     <Button
                       color="primary"
                       size="sm"
-                      onPress={() => openEditModal(r)}
+                      onPress={() => openEditModal(t)}
                     >
                       Edit
                     </Button>
                     <Button
                       color="danger"
                       size="sm"
-                      onPress={() => openDeleteConfirm(r)}
+                      onPress={() => openDeleteConfirm(t)}
                     >
                       Delete
                     </Button>
@@ -203,31 +165,23 @@ export default function ReceptionsPage() {
             ))}
           </TableBody>
         </Table>
-        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl">
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="2xl">
           <ModalContent>
             {(onClose) => (
               <>
                 <ModalHeader>
                   <h2 className="text-xl font-bold">
-                    {editingReception
-                      ? "Modifier le bon de réception"
-                      : "Nouveau bon de réception"}
+                    {editingType ? "Modifier le type" : "Nouveau type"}
                   </h2>
                 </ModalHeader>
                 <ModalBody>
-                  <ReceptionForm
-                    items={items}
-                    suppliers={suppliers}
-                    initial={editingReception}
+                  <TypeForm
+                    initial={editingType}
                     onCancel={() => onClose()}
                     onSubmit={async (payload) => {
-                      const res = editingReception
-                        ? await dbApi.update<Reception>(
-                            "reception",
-                            editingReception.id,
-                            payload
-                          )
-                        : await dbApi.create<Reception>("reception", payload);
+                      const res = editingType
+                        ? await dbApi.update<Type>("type", editingType.id, payload)
+                        : await dbApi.create<Type>("type", payload);
                       if (!res.success && "error" in res)
                         alert("Erreur: " + res.error);
                       else await refresh();
@@ -249,8 +203,8 @@ export default function ReceptionsPage() {
                 <ModalHeader>Confirmer la suppression</ModalHeader>
                 <ModalBody>
                   <p>
-                    Êtes-vous sûr de vouloir supprimer la réception #
-                    {deletingReception?.id}?
+                    Êtes-vous sûr de vouloir supprimer le type #
+                    {deletingType?.id}?
                   </p>
                   <div className="flex justify-end gap-2">
                     <Button color="default" onPress={onClose}>

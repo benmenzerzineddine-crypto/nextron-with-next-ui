@@ -22,12 +22,15 @@ import ReceptionForm from "@/components/receptionForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
 import type { StockMovement } from "@/types/schema";
+import * as api from "@/utils/api";
+import { isApiError } from "@/utils/types";
 
-const mockConsommation: StockMovement[] = [
+const ConsommationPage = () => {
+  const [consommations, setConsommations] = useState<StockMovement[]>([
   {
     id: 2,
     item_id: 2,
-    item: {
+    Item: {
       id: 2,
       created_at: "2025-10-02T10:00:00Z",
       updated_at: "2025-10-10T12:00:00Z",
@@ -52,43 +55,34 @@ const mockConsommation: StockMovement[] = [
     user_id: 2,
     notes: "Consommation atelier",
   },
-  {
-    id: 3,
-    item_id: 1,
-    item: {
-      id: 1,
-      created_at: "2025-10-01T10:00:00Z",
-      updated_at: "2025-10-10T12:00:00Z",
-      name: "Papier brun haute résistance",
-      type_id: 1,
-      type: { id: 1, name: "KRAFT", description: "Papier kraft", items: [] },
-      description: "Papier brun haute résistance",
-      sku: "KRAFT-001",
-      supplier_id: 1,
-      supplier: { id: 1, name: "Algérie Papier", origine: "DZ", items: [] },
-      weight: 45,
-      height: 120,
-      grammage: 90,
-      current_quantity: 500,
-      locationid: 1,
-      location: { id: 1, name: "Entrepôt A", description: "Principal", items: [] },
-    },
-    type: "OUT",
-    quantity: 20,
-    weight: 12,
-    date: "2025-10-12T12:00:00Z",
-    user_id: 1,
-  },
-];
+]);
 
-export default function ConsommationPage() {
+  // Fetch consommations on mount
+  useEffect(() => {
+    const fetchConsommations = async () => {
+      try {
+        const response = await api.getAll<StockMovement>('stockmovement');
+        if (!isApiError(response)) {
+          // Filter only OUT movements (consommations)
+          const outMovements = response.data.filter(movement => movement.type === 'OUT');
+          setConsommations(outMovements);
+        } else {
+          console.error('Failed to fetch consommations:', response.error);
+        }
+      } catch (error) {
+        console.error('Error fetching consommations:', error);
+      }
+    };
+
+    fetchConsommations();
+  }, []);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("TOUS");
   const [selectionMode, setSelectionMode] = useState<"none" | "single" | "multiple">("single");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   const filteredList = useMemo(() => {
-    let filtered = mockConsommation;
+    let filtered = consommations;
     if (typeFilter !== "TOUS") {
       filtered = filtered.filter((m) => m.type === typeFilter);
     }
@@ -116,7 +110,7 @@ export default function ConsommationPage() {
   }, []);
 
     return (
-        <DefaultLayout>
+      <DefaultLayout>
             <Head>
                 <title>Home - Nextron (with-next-ui)</title>
             </Head>
@@ -156,8 +150,8 @@ export default function ConsommationPage() {
           {filteredList.map((m) => (
             <TableRow key={m.id}>
               <TableCell>{m.id}</TableCell>
-              <TableCell>{m.item.name}</TableCell>
-              <TableCell>{m.item.type.name}</TableCell>
+              <TableCell>{m.Item.name}</TableCell>
+              <TableCell>{m.Item.type.name}</TableCell>
               <TableCell>{m.quantity}</TableCell>
               <TableCell>{m.weight ?? "-"}</TableCell>
               <TableCell>{new Date(m.date).toLocaleString()}</TableCell>
@@ -175,8 +169,35 @@ export default function ConsommationPage() {
                 Nouvelle consommation
               </ModalHeader>
               <ModalBody>
-                {/* TODO: Add Consommation form here */}
-                <div>Formulaire de consommation à venir…</div>
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  // Add form handling here once the form component is ready
+                  try {
+                    const formData = new FormData(e.currentTarget);
+                    const consommationData = {
+                      item_id: Number(formData.get('item_id')),
+                      type: 'OUT',
+                      quantity: Number(formData.get('quantity')),
+                      weight: Number(formData.get('weight')),
+                      date: new Date().toISOString(),
+                      user_id: 1, // TODO: Get from auth context
+                      notes: formData.get('notes')?.toString()
+                    };
+
+                    const response = await api.create<StockMovement>('stockmovement', consommationData);
+                    if (!isApiError(response)) {
+                      setConsommations(prev => [...prev, response.data]);
+                      onClose();
+                    } else {
+                      console.error('Failed to create consommation:', response.error);
+                    }
+                  } catch (error) {
+                    console.error('Error creating consommation:', error);
+                  }
+                }}>
+                  {/* TODO: Add Consommation form here */}
+                  <div>Formulaire de consommation à venir…</div>
+                </form>
               </ModalBody>
             </>
           )}
@@ -185,4 +206,6 @@ export default function ConsommationPage() {
     </div>
         </DefaultLayout>
     );
-}
+};
+
+export default ConsommationPage;

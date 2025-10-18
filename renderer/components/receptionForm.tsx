@@ -8,20 +8,22 @@ type MovementRow = { item_id?: number; quantity: number; weight?: number; type?:
 export default function ReceptionForm({
   initial,
   items = [],
+  suppliers = [],
   onSubmit,
   onCancel,
 }: {
   initial?: Partial<Reception>;
   items?: Item[];
+  suppliers?: Supplier[];
   onSubmit?: (r: Partial<Reception>) => void;
   onCancel?: () => void;
 }) {
   const Types = ["KRAFT", "PAPIER COUCHÉ", "TESTLINER-B", "TESTLINER-M", "FLOUTING"];
-  const [supplier, setSupplier] = React.useState(initial?.supplier ?? "");
+  const [supplierId, setSupplierId] = React.useState(initial?.supplier_id);
   const [date, setDate] = React.useState(initial?.date ?? new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = React.useState(initial?.notes ?? "");
   const [movements, setMovements] = React.useState<MovementRow[]>(
-    (initial?.mouvement?.map((m) => ({ item_id: m.item_id, quantity: m.quantity, weight: (m as any).weight })) as MovementRow[]) ??
+    (initial?.Mouvement?.map((m) => ({ item_id: m.item_id, quantity: m.quantity, weight: (m as any).weight })) as MovementRow[]) ??
       [{ item_id: items[0]?.id, quantity: 0, weight: undefined, type: items[0]?.type, height: items[0]?.height, grammage: items[0]?.grammage }]
   );
 
@@ -64,7 +66,7 @@ export default function ReceptionForm({
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     // Basic validation
-    if (!supplier) return alert("Fournisseur est requis");
+    if (!supplierId) return alert("Fournisseur est requis");
     if (!date) return alert("Date est requise");
     if (movements.length === 0) return alert("Ajoutez au moins un mouvement");
     for (const m of movements) {
@@ -73,29 +75,12 @@ export default function ReceptionForm({
     }
 
     const payload: Partial<Reception> = {
-      supplier,
+      supplier_id: supplierId,
       date,
       notes,
-      quantity: movements.reduce((a, b) => a + b.quantity, 0),
-      mouvement: movements.map((m, i) => ({
+      Mouvement: movements.map((m, i) => ({
         id: i + 1,
         item_id: m.item_id ?? 0,
-        item:
-          items.find((it) => it.id === m.item_id) ??
-          ({
-            id: 0,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            name: "Nouvel article",
-            sku: computeSku({ name: supplier }, m.height, m.grammage, m.type),
-            weight: m.weight ?? 0,
-            height: m.height ?? 0,
-            grammage: m.grammage ?? 0,
-            current_quantity: 0,
-            type: m.type,
-            supplier: { name: supplier },
-            location: { id: 0, name: "Unknown", items: [] },
-          } as unknown as Item),
         type: "IN",
         quantity: m.quantity,
         weight: m.weight,
@@ -109,7 +94,16 @@ export default function ReceptionForm({
   return (
     <form className="w-full max-w-4xl p-6 space-y-6 bg-gray-50 dark:bg-slate-900/40 rounded-lg" onSubmit={handleSubmit}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Input label="Fournisseur" name="supplier" value={supplier} onChange={(e: any) => setSupplier(e.target.value)} isRequired />
+        <Autocomplete
+          label="Fournisseur"
+          name="supplier"
+          defaultItems={suppliers.map((s) => ({ key: String(s.id), label: s.name }))}
+          selectedKey={supplierId ? String(supplierId) : ""}
+          onSelectionChange={(key) => setSupplierId(Number(key))}
+          isRequired
+        >
+          {(item: any) => <AutocompleteItem key={item.key}>{item.label}</AutocompleteItem>}
+        </Autocomplete>
         <Input label="Date" name="date" type="date" value={date} onChange={(e: any) => setDate(e.target.value)} isRequired />
         <Input label="Notes" name="notes" value={notes} onChange={(e: any) => setNotes(e.target.value)} />
       </div>
