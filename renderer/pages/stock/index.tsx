@@ -5,7 +5,7 @@ import { SearchIcon } from "@/components/icons";
 import ItemForm from "@/components/itemForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
-import type { Item, Type, Supplier, Location } from "@/types/schema";
+import type { Item, Type, Supplier, Location, StockMovement } from "@/types/schema";
 import * as dbApi from "@/utils/api";
 
 const useDbItems = () => {
@@ -85,6 +85,7 @@ export default function StockPage() {
           (item.sku?.toLocaleLowerCase() || "").includes(s)
       );
     }
+    console.log(filtered)
     return filtered;
   }, [type, search, items]);
 
@@ -123,6 +124,13 @@ export default function StockPage() {
     }
   };
 
+  const CalculateQty = (mouvements: StockMovement[]) => {
+    return mouvements.reduce((acc, m) => acc + m.quantity, 0);
+  };
+  const CalculateWeight = (mouvements: StockMovement[]) => {
+    if (!mouvements) return 0;
+    return mouvements.reduce((acc, m) => acc + m.weight, 0);
+  };
   return (
     <DefaultLayout>
       <Head>
@@ -174,6 +182,7 @@ export default function StockPage() {
             <TableColumn>Largeur (cm)</TableColumn>
             <TableColumn>Grammage (g/m²)</TableColumn>
             <TableColumn>Quantité</TableColumn>
+            <TableColumn>Poid</TableColumn>
             <TableColumn>Emplacement</TableColumn>
             <TableColumn>Actions</TableColumn>
           </TableHeader>
@@ -188,7 +197,8 @@ export default function StockPage() {
                 <TableCell>{item.Supplier?.name}</TableCell>
                 <TableCell>{item.height}</TableCell>
                 <TableCell>{item.grammage}</TableCell>
-                <TableCell>{item.current_quantity}</TableCell>
+                <TableCell>{CalculateQty(item.StockMovements)}</TableCell>
+                <TableCell>{CalculateWeight(item.StockMovements)}</TableCell>
                 <TableCell>{item.Location?.name}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
@@ -227,11 +237,29 @@ export default function StockPage() {
                     locations={locations}
                     onCancel={() => onClose()}
                     onSubmit={async (payload) => {
-                      const res = editingItem
-                        ? await dbApi.update<Item>("item", editingItem.id, payload)
-                        : await dbApi.create<Item>("item", payload);
-                      if (!res.success && "error" in res) alert("Erreur: " + res.error);
-                      else await refresh();
+                      if (editingItem) {
+                        const res = await dbApi.update<Item>("item", editingItem.id, payload);
+                        if (!res.success && "error" in res) alert("Erreur: " + res.error);
+                        else await refresh();
+                      } else {
+                        const res = await dbApi.create<Item>("item", payload);
+                        if (res.success) {
+                          if (payload.current_quantity && payload.current_quantity > 0) {
+                            const mouvementPayload: any = {
+                              item_id: res.data.id,
+                              type: "IN",
+                              quantity: payload.current_quantity,
+                              weight: payload.currentWeight ? payload.currentWeight : 0,
+                              date: new Date().toISOString(),
+                              notes: "Initial Value",
+                            };
+                            await dbApi.create("stockmovement", mouvementPayload);
+                          }
+                          await refresh();
+                        } else if ("error" in res) {
+                          alert("Erreur: " + res.error);
+                        }
+                      }
                       onClose();
                     }}
                   />

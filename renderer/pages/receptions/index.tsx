@@ -177,7 +177,7 @@ export default function ReceptionsPage() {
               <TableRow key={r.id}>
                 <TableCell>{r.id}</TableCell>
                 <TableCell>{r.Supplier?.name ?? "-"}</TableCell>
-                <TableCell>{CalculateQty(r.Mouvement)}</TableCell>
+                <TableCell>{CalculateQty(r.StockMovements)}</TableCell>
                 <TableCell>{new Date(r.date).toLocaleString()}</TableCell>
                 <TableCell>{r.user_id ?? "-"}</TableCell>
                 <TableCell>{r.notes ?? ""}</TableCell>

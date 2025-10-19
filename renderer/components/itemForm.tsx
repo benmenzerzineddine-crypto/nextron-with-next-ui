@@ -14,7 +14,7 @@ export default function ItemForm({
   types?: Partial<Type>[];
   suppliers?: Partial<Supplier>[];
   locations?: Partial<Location>[];
-  onSubmit?: (s: Partial<Item>) => void;
+  onSubmit?: (s: Partial<Item> & { currentWeight?: number }) => void;
   onCancel?: () => void;
 }) {
   const [name, setName] = React.useState(initial?.name ?? "");
@@ -25,7 +25,8 @@ export default function ItemForm({
   const [locationId, setLocationId] = React.useState<string | undefined>(initial?.Location?.id ? String(initial.Location.id) : undefined);
   const [height, setHeight] = React.useState<string | undefined>(initial?.height ? String(initial.height) : undefined);
   const [grammage, setGrammage] = React.useState<string | undefined>(initial?.grammage ? String(initial.grammage) : undefined);
-  const [currentQuantity, setCurrentQuantity] = React.useState<string | undefined>("0");
+  const [currentQuantity, setCurrentQuantity] = React.useState<string | undefined>(initial?.current_quantity ? String(initial.current_quantity) : "0");
+  const [currentWeight, setCurrentWeight] = React.useState<string | undefined>("0");
 
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -35,12 +36,14 @@ export default function ItemForm({
       name,
       description,
       sku,
-  // Associations are passed as partial objects with just the id.
-  Type: typeId ? ({ id: Number(typeId) } as unknown as Type) : undefined,
-  Supplier: supplierId ? ({ id: Number(supplierId) } as unknown as Supplier) : undefined,
-  Location: locationId ? ({ id: Number(locationId) } as unknown as Location) : undefined,
+      // Associations are passed as partial objects with just the id.
+      type_id: Number(typeId),
+      supplier_id: Number(supplierId),
+      location_id: Number(locationId),
       height: height ? Number(height) : undefined,
       grammage: grammage ? Number(grammage) : undefined,
+      current_quantity: currentQuantity ? Number(currentQuantity) : 0,
+      currentWeight: currentWeight ? Number(currentWeight) : 0,
     });
   };
 
@@ -56,8 +59,8 @@ export default function ItemForm({
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <Select label="Fournisseur" name="supplier_id" selectedKeys={supplierId ? new Set([supplierId]) : new Set()} onSelectionChange={(s) => setSupplierId(Array.from(s as Set<string>)[0])}>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <Select label="Fournisseur" name="supplier_id" selectedKeys={supplierId ? new Set([supplierId]) : new Set()} onSelectionChange={(s) => setSupplierId(Array.from(s as Set<string>)[0])}>
           {suppliers.map((s) => (
             <SelectItem key={String(s.id)}>{s.name}</SelectItem>
           ))}
@@ -69,7 +72,22 @@ export default function ItemForm({
         </Select>
         <Input label="Hauteur (cm)" name="height" type="number" value={height ?? ""} onChange={(e: any) => setHeight(e.target.value)} />
         <Input label="Grammage (g/m²)" name="grammage" type="number" value={grammage ?? ""} onChange={(e: any) => setGrammage(e.target.value)} />
-        <Input label="Quantité actuelle" name="current_quantity" type="number" value={currentQuantity ?? ""} isReadOnly />
+        <Input
+          label="Quantité actuelle"
+          name="current_quantity"
+          type="number"
+          value={currentQuantity ?? ""}
+          onChange={(e: any) => setCurrentQuantity(e.target.value)}
+          isReadOnly={!!initial?.id}
+        />
+        <Input
+          label="Poids actuel (kg)"
+          name="current_weight"
+          type="number"
+          value={currentWeight ?? ""}
+          onChange={(e: any) => setCurrentWeight(e.target.value)}
+          isReadOnly={!!initial?.id}
+        />
       </div>
 
       <div className="flex gap-2 justify-end">

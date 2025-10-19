@@ -9,7 +9,7 @@ export interface Item {
   sku: string;
   supplier_id?: number;
   Supplier?: Supplier;
-  Mouvements?: StockMovement[];
+  StockMovements?: StockMovement[];
   height: number;
   grammage: number;
   location_id?: number;
@@ -39,7 +39,7 @@ export interface StockMovement {
 export interface Reception {
   id: number;
   mouvement_id: number;
-  Mouvement: StockMovement[]; // Include full movement details
+  StockMovements: StockMovement[]; // Include full movement details
   supplier_id: number;
   Supplier: Supplier;
   date: string; // ISO format recommended

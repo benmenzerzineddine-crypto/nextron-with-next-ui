@@ -4,7 +4,7 @@ import { User, Supplier, Location, Type, Item, StockMovement, Reception } from '
 const getModelIncludes = (modelName: string) => {
     switch (modelName) {
         case 'item':
-            return [Type, Supplier, Location];
+            return [Type, Supplier, Location, StockMovement];
         case 'stockmovement':
             return [Item];
         case 'reception':
@@ -82,7 +82,7 @@ ipcMain.handle('item:getBySku', async (_, sku) => {
   try {
     const result = await Item.findOne({
       where: { sku },
-      include: [Type, Supplier, Location]
+      include: [Type, Supplier, Location, StockMovement]
     });
     const plainData = result ? result.get({ plain: true }) : null;
     return { success: true, data: plainData };
