@@ -151,6 +151,10 @@ const Transaction = sequelize.define('Transaction', {
   notes: {
     type: DataTypes.STRING,
   },
+  type: {
+    type: DataTypes.ENUM('RECEPTION', 'CONSOMMATION'),
+    allowNull: false,
+  },
 });
 
 // Define Relationships
