@@ -14,89 +14,84 @@ import {
   ModalHeader,
   ModalBody,
   useDisclosure,
-  Tabs,
-  Tab,
 } from "@nextui-org/react";
 import { SearchIcon } from "@/components/icons";
 import ReceptionForm from "@/components/receptionForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
-import type { StockMovement } from "@/types/schema";
-import * as api from "@/utils/api";
-import { isApiError } from "@/utils/types";
+import type { Transaction, StockMovement, Item, Supplier } from "@/types/schema";
+import * as dbApi from "@/utils/api";
 
-const ConsommationPage = () => {
-  const [consommations, setConsommations] = useState<StockMovement[]>([
-  {
-    id: 2,
-    item_id: 2,
-    Item: {
-      id: 2,
-      created_at: "2025-10-02T10:00:00Z",
-      updated_at: "2025-10-10T12:00:00Z",
-      name: "Papier couché brillant A2",
-      type_id: 2,
-      type: { id: 2, name: "PAPIER COUCHÉ", description: "Papier couché", items: [] },
-      description: "Papier couché brillant A2",
-      sku: "COUCHE-002",
-      supplier_id: 2,
-      supplier: { id: 2, name: "France Papier", origine: "FR", items: [] },
-      weight: 34.5,
-      height: 100,
-      grammage: 115,
-      current_quantity: 300,
-      locationid: 2,
-      location: { id: 2, name: "Entrepôt B", description: "Secondaire", items: [] },
-    },
-    type: "OUT",
-    quantity: 50,
-    weight: 34.5,
-    date: "2025-10-11T11:00:00Z",
-    user_id: 2,
-    notes: "Consommation atelier",
-  },
-]);
-
-  // Fetch consommations on mount
+const useDbReceptions = () => {
+  const [receptions, setReceptions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const refresh = async () => {
+    setLoading(true);
+    setError(null);
+    const res = await dbApi.getAll<Transaction>("transaction");
+    if (res.success) setReceptions(res.data.filter(t => t.type === 'CONSOMMATION'));
+    else if ("error" in res) setError(res.error);
+    setLoading(false);
+  };
   useEffect(() => {
-    const fetchConsommations = async () => {
-      try {
-        const response = await api.getAll<StockMovement>('stockmovement');
-        if (!isApiError(response)) {
-          // Filter only OUT movements (consommations)
-          const outMovements = response.data.filter(movement => movement.type === 'OUT');
-          setConsommations(outMovements);
-        } else {
-          console.error('Failed to fetch consommations:', response.error);
-        }
-      } catch (error) {
-        console.error('Error fetching consommations:', error);
-      }
-    };
-
-    fetchConsommations();
+    refresh();
   }, []);
+  return { receptions, loading, error, refresh };
+};
+
+const useDbItems = () => {
+  const [items, setItems] = useState<Item[]>([]);
+  const refresh = async () => {
+    const res = await dbApi.getAll<Item>("item");
+    if (res.success) setItems(res.data);
+  };
+  useEffect(() => {
+    refresh();
+  }, []);
+  return { items, refresh };
+};
+
+const useDbSuppliers = () => {
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const refresh = async () => {
+    const res = await dbApi.getAll<Supplier>("supplier");
+    if (res.success) setSuppliers(res.data);
+  };
+  useEffect(() => {
+    refresh();
+  }, []);
+  return { suppliers, refresh };
+};
+
+export default function ConsommationPage() {
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("TOUS");
   const [selectionMode, setSelectionMode] = useState<"none" | "single" | "multiple">("single");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const { receptions, loading, error, refresh } = useDbReceptions();
+  const { items } = useDbItems();
+  const { suppliers } = useDbSuppliers();
+  const [editingReception, setEditingReception] = useState<Transaction | null>(null);
+  const [deletingReception, setDeletingReception] = useState<Transaction | null>(null);
+  const {
+    isOpen: isDeleteConfirmOpen,
+    onOpen: onDeleteConfirmOpen,
+    onOpenChange: onDeleteConfirmOpenChange,
+  } = useDisclosure();
 
   const filteredList = useMemo(() => {
-    let filtered = consommations;
-    if (typeFilter !== "TOUS") {
-      filtered = filtered.filter((m) => m.type === typeFilter);
-    }
+    let filtered = receptions;
     if (search.trim()) {
       const s = search.toLowerCase();
       filtered = filtered.filter(
-        (m) =>
-          String(m.item_id).includes(s) ||
-          String(m.quantity).includes(s) ||
-          (m.notes?.toLowerCase() || "").includes(s)
+        (r) =>
+          (r.Supplier?.name?.toLowerCase() || "").includes(s) ||
+          (r.notes?.toLowerCase() || "").includes(s) ||
+          String(r.id).includes(s)
       );
     }
     return filtered;
-  }, [search, typeFilter]);
+  }, [receptions, search]);
 
   useEffect(() => {
     const handleKeyDown = () => setSelectionMode("multiple");
@@ -109,103 +104,168 @@ const ConsommationPage = () => {
     };
   }, []);
 
-    return (
-      <DefaultLayout>
-            <Head>
-                <title>Home - Nextron (with-next-ui)</title>
-            </Head>
+  const CalculateQty = (mouvements: StockMovement[]) => {
+    if (!mouvements) return 0;
+    return mouvements.reduce((acc, m) => acc + m.quantity, 0);
+  };
 
-    <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-bold mb-2">Consommation</h1>
-      <section className="flex gap-4 items-end">
-        <Input
-          labelPlacement="outside"
-          placeholder="Recherche (article, quantité, notes)"
-          startContent={<SearchIcon className="text-2xl text-default-400 pointer-events-none shrink-0" />}
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1"
-        />
-        <Button color="primary" onPress={onOpen}>
-          Nouvelle consommation
-        </Button>
-      </section>
-      <Table
-        aria-label="Liste des consommations"
-        selectionMode={selectionMode}
-        showSelectionCheckboxes={false}
-      >
-        <TableHeader>
-          <TableColumn>ID</TableColumn>
-          <TableColumn>Article</TableColumn>
-          <TableColumn>Type</TableColumn>
-          <TableColumn>Quantité</TableColumn>
-          <TableColumn>Poids (kg)</TableColumn>
-          <TableColumn>Date</TableColumn>
-          <TableColumn>Utilisateur</TableColumn>
-          <TableColumn>Notes</TableColumn>
-        </TableHeader>
-        <TableBody>
-          {filteredList.map((m) => (
-            <TableRow key={m.id}>
-              <TableCell>{m.id}</TableCell>
-              <TableCell>{m.Item.name}</TableCell>
-              <TableCell>{m.Item.type.name}</TableCell>
-              <TableCell>{m.quantity}</TableCell>
-              <TableCell>{m.weight ?? "-"}</TableCell>
-              <TableCell>{new Date(m.date).toLocaleString()}</TableCell>
-              <TableCell>{m.user_id ?? "-"}</TableCell>
-              <TableCell>{m.notes ?? ""}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <Modal size="2xl" isOpen={isOpen} onOpenChange={onOpenChange}>
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1">
-                Nouvelle consommation
-              </ModalHeader>
-              <ModalBody>
-                <form onSubmit={async (e) => {
-                  e.preventDefault();
-                  // Add form handling here once the form component is ready
-                  try {
-                    const formData = new FormData(e.currentTarget);
-                    const consommationData = {
-                      item_id: Number(formData.get('item_id')),
-                      type: 'OUT',
-                      quantity: Number(formData.get('quantity')),
-                      weight: Number(formData.get('weight')),
-                      date: new Date().toISOString(),
-                      user_id: 1, // TODO: Get from auth context
-                      notes: formData.get('notes')?.toString()
-                    };
+  const openEditModal = (reception: Transaction) => {
+    setEditingReception(reception);
+    onOpen();
+  };
 
-                    const response = await api.create<StockMovement>('stockmovement', consommationData);
-                    if (!isApiError(response)) {
-                      setConsommations(prev => [...prev, response.data]);
+  const openNewModal = () => {
+    setEditingReception(null);
+    onOpen();
+  };
+
+  const openDeleteConfirm = (reception: Transaction) => {
+    setDeletingReception(reception);
+    onDeleteConfirmOpen();
+  };
+
+  const handleDelete = async () => {
+    if (deletingReception) {
+      const res = await dbApi.remove("transaction", deletingReception.id);
+      if (!res.success && "error" in res) alert("Erreur: " + res.error);
+      else await refresh();
+      onDeleteConfirmOpenChange();
+    }
+  };
+
+  return (
+    <DefaultLayout>
+      <Head>
+        <title>Receptions - Nextron (with-next-ui)</title>
+      </Head>
+
+      <div className="flex flex-col gap-4">
+        <h1 className="text-2xl font-bold mb-2">Bons de réception</h1>
+        <section className="flex gap-4 items-end">
+          <Input
+            labelPlacement="outside"
+            placeholder="Recherche (fournisseur, notes, id)"
+            startContent={
+              <SearchIcon className="text-2xl text-default-400 pointer-events-none shrink-0" />
+            }
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1"
+          />
+          <Button color="primary" onPress={openNewModal}>
+            Nouveau bon de réception
+          </Button>
+        </section>
+        {error && <div className="text-red-500">Erreur: {error}</div>}
+        <Table
+          aria-label="Liste des bons de réception"
+          selectionMode={selectionMode}
+          showSelectionCheckboxes={false}
+        >
+          <TableHeader>
+            <TableColumn>ID</TableColumn>
+            <TableColumn>Fournisseur</TableColumn>
+            <TableColumn>Quantités</TableColumn>
+            <TableColumn>Date</TableColumn>
+            <TableColumn>Utilisateur</TableColumn>
+            <TableColumn>Notes</TableColumn>
+            <TableColumn>Actions</TableColumn>
+          </TableHeader>
+          <TableBody isLoading={loading} emptyContent={"Aucune réception à afficher"}>
+            {filteredList.map((r) => (
+              <TableRow key={r.id}>
+                <TableCell>{r.id}</TableCell>
+                <TableCell>{r.Supplier?.name ?? "-"}</TableCell>
+                <TableCell>{CalculateQty(r.StockMovements)}</TableCell>
+                <TableCell>{new Date(r.date).toLocaleString()}</TableCell>
+                <TableCell>{r.user_id ?? "-"}</TableCell>
+                <TableCell>{r.notes ?? ""}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <Button
+                      color="primary"
+                      size="sm"
+                      onPress={() => openEditModal(r)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      color="danger"
+                      size="sm"
+                      onPress={() => openDeleteConfirm(r)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <Modal isOpen={isOpen} onOpenChange={onOpenChange} size="5xl">
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader>
+                  <h2 className="text-xl font-bold">
+                    {editingReception
+                      ? "Modifier le bon de réception"
+                      : "Nouveau bon de réception"}
+                  </h2>
+                </ModalHeader>
+                <ModalBody>
+                  <ReceptionForm
+                    items={items}
+                    suppliers={suppliers}
+                    initial={editingReception}
+                    onCancel={() => onClose()}
+                    onSubmit={async (payload) => {
+                      const res = editingReception
+                        ? await dbApi.update<Transaction>(
+                            "transaction",
+                            editingReception.id,
+                            payload
+                          )
+                        : await dbApi.create<Transaction>("transaction", payload);
+                      if (!res.success && "error" in res)
+                        alert("Erreur: " + res.error);
+                      else await refresh();
                       onClose();
-                    } else {
-                      console.error('Failed to create consommation:', response.error);
-                    }
-                  } catch (error) {
-                    console.error('Error creating consommation:', error);
-                  }
-                }}>
-                  {/* TODO: Add Consommation form here */}
-                  <div>Formulaire de consommation à venir…</div>
-                </form>
-              </ModalBody>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
-    </div>
-        </DefaultLayout>
-    );
-};
-
-export default ConsommationPage;
+                    }}
+                  />
+                </ModalBody>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+        <Modal
+          isOpen={isDeleteConfirmOpen}
+          onOpenChange={onDeleteConfirmOpenChange}
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader>Confirmer la suppression</ModalHeader>
+                <ModalBody>
+                  <p>
+                    Êtes-vous sûr de vouloir supprimer la réception #
+                    {deletingReception?.id}?
+                  </p>
+                  <div className="flex justify-end gap-2">
+                    <Button color="default" onPress={onClose}>
+                      Annuler
+                    </Button>
+                    <Button color="danger" onPress={handleDelete}>
+                      Supprimer
+                    </Button>
+                  </div>
+                </ModalBody>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+      </div>
+    </DefaultLayout>
+  );
+}

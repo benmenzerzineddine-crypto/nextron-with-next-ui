@@ -137,7 +137,7 @@ const StockMovement = sequelize.define('StockMovement', {
   },
 });
 
-const Reception = sequelize.define('Reception', {
+const Transaction = sequelize.define('Transaction', {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
@@ -172,15 +172,15 @@ StockMovement.belongsTo(Item, { foreignKey: 'item_id' });
 User.hasMany(StockMovement, { foreignKey: 'user_id' });
 StockMovement.belongsTo(User, { foreignKey: 'user_id' });
 
-// Reception relationships
-Reception.hasMany(StockMovement, { foreignKey: 'reception_id', onDelete: 'CASCADE' });
-StockMovement.belongsTo(Reception, { foreignKey: 'reception_id' });
+// Transaction relationships
+Transaction.hasMany(StockMovement, { foreignKey: 'transaction_id', onDelete: 'CASCADE' });
+StockMovement.belongsTo(Transaction, { foreignKey: 'transaction_id' });
 
-Supplier.hasMany(Reception, { foreignKey: 'supplier_id' });
-Reception.belongsTo(Supplier, { foreignKey: 'supplier_id' });
+Supplier.hasMany(Transaction, { foreignKey: 'supplier_id' });
+Transaction.belongsTo(Supplier, { foreignKey: 'supplier_id' });
 
-User.hasMany(Reception, { foreignKey: 'user_id' });
-Reception.belongsTo(User, { foreignKey: 'user_id' });
+User.hasMany(Transaction, { foreignKey: 'user_id' });
+Transaction.belongsTo(User, { foreignKey: 'user_id' });
 
 
 // Sync database
@@ -196,5 +196,5 @@ export {
   Type,
   Item,
   StockMovement,
-  Reception,
+  Transaction,
 };

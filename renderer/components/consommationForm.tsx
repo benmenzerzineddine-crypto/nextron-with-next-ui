@@ -1,33 +1,31 @@
 import React from "react";
 import { Button, Input, Autocomplete, AutocompleteItem, Modal, ModalContent, ModalHeader, ModalBody, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@nextui-org/react";
-import type { Transaction, StockMovement, Item, Type, Supplier, Location } from "../types/schema";
-import { computeSku } from "../utils/sku";
+import type { Transaction, StockMovement, Item, Type, Location } from "../types/schema";
 
-type MovementRow = { item_id?: number; quantity: number; weight?: number; type?: Partial<Type>; height?: number; grammage?: number };
+type MovementRow = { item_id?: number; quantity: number; weight?: number; };
 
-export default function ReceptionForm({
+export default function ConsommationForm({
   initial,
   items = [],
-  suppliers = [],
+  locations = [],
   onSubmit,
   onCancel,
 }: {
   initial?: Partial<Transaction>;
   items?: Item[];
-  suppliers?: Supplier[];
+  locations?: Location[];
   onSubmit?: (r: Partial<Transaction>) => void;
   onCancel?: () => void;
 }) {
-  const Types = ["KRAFT", "PAPIER COUCHÉ", "TESTLINER-B", "TESTLINER-M", "FLOUTING"];
-  const [supplierId, setSupplierId] = React.useState(initial?.supplier_id);
+  const [locationId, setLocationId] = React.useState(initial?.location_id);
   const [date, setDate] = React.useState(initial?.date ?? new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = React.useState(initial?.notes ?? "");
   const [movements, setMovements] = React.useState<MovementRow[]>(
     (initial?.Mouvement?.map((m) => ({ item_id: m.item_id, quantity: m.quantity, weight: (m as any).weight })) as MovementRow[]) ??
-      [{ item_id: items[0]?.id, quantity: 0, weight: undefined, type: items[0]?.type, height: items[0]?.height, grammage: items[0]?.grammage }]
+      [{ item_id: items[0]?.id, quantity: 0, weight: undefined }]
   );
 
-  const addRow = () => setMovements((s) => [...s, { item_id: items[0]?.id, quantity: 0, weight: undefined, type: items[0]?.type, height: items[0]?.height, grammage: items[0]?.grammage }]);
+  const addRow = () => setMovements((s) => [...s, { item_id: items[0]?.id, quantity: 0, weight: undefined }]);
   const removeRow = (idx: number) => setMovements((s) => s.filter((_, i) => i !== idx));
   const updateRow = (idx: number, k: keyof MovementRow, v: any) =>
     setMovements((s) => s.map((r, i) => (i === idx ? { ...r, [k]: v } : r)));
@@ -35,10 +33,10 @@ export default function ReceptionForm({
   // Modal state for adding/editing a movement
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
-  const [editRow, setEditRow] = React.useState<MovementRow>({ item_id: items[0]?.id, quantity: 1, weight: undefined, type: items[0]?.type, height: items[0]?.height, grammage: items[0]?.grammage });
+  const [editRow, setEditRow] = React.useState<MovementRow>({ item_id: items[0]?.id, quantity: 1, weight: undefined });
 
   const openModalForAdd = () => {
-    setEditRow({ item_id: items[0]?.id, quantity: 1, weight: undefined, type: items[0]?.type, height: items[0]?.height, grammage: items[0]?.grammage });
+    setEditRow({ item_id: items[0]?.id, quantity: 1, weight: undefined });
     setEditingIndex(null);
     setIsModalOpen(true);
   };
@@ -66,7 +64,7 @@ export default function ReceptionForm({
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     // Basic validation
-    if (!supplierId) return alert("Fournisseur est requis");
+    if (!locationId) return alert("Emplacement est requis");
     if (!date) return alert("Date est requise");
     if (movements.length === 0) return alert("Ajoutez au moins un mouvement");
     for (const m of movements) {
@@ -75,14 +73,14 @@ export default function ReceptionForm({
     }
 
     const payload: Partial<Transaction> = {
-      supplier_id: supplierId,
+      location_id: locationId,
       date,
       notes,
-      type: "RECEPTION",
+      type: "CONSOMMATION",
       StockMovements: movements.map((m, i) => ({
         id: i + 1,
         item_id: m.item_id ?? 0,
-        type: "IN",
+        type: "OUT",
         quantity: m.quantity,
         weight: m.weight,
         date,
@@ -96,11 +94,11 @@ export default function ReceptionForm({
     <form className="w-full max-w-4xl p-6 space-y-6 bg-gray-50 dark:bg-slate-900/40 rounded-lg" onSubmit={handleSubmit}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Autocomplete
-          label="Fournisseur"
-          name="supplier"
-          defaultItems={suppliers.map((s) => ({ key: String(s.id), label: s.name }))}
-          selectedKey={supplierId ? String(supplierId) : ""}
-          onSelectionChange={(key) => setSupplierId(Number(key))}
+          label="Emplacement"
+          name="location"
+          defaultItems={locations.map((s) => ({ key: String(s.id), label: s.name }))}
+          selectedKey={locationId ? String(locationId) : ""}
+          onSelectionChange={(key) => setLocationId(Number(key))}
           isRequired
         >
           {(item: any) => <AutocompleteItem key={item.key}>{item.label}</AutocompleteItem>}
@@ -124,9 +122,6 @@ export default function ReceptionForm({
             <TableColumn>Article</TableColumn>
             <TableColumn>Quantité</TableColumn>
             <TableColumn>Poids (kg)</TableColumn>
-            <TableColumn>Type</TableColumn>
-            <TableColumn>H (cm)</TableColumn>
-            <TableColumn>g/m²</TableColumn>
             <TableColumn>Actions</TableColumn>
           </TableHeader>
           <TableBody>
@@ -135,9 +130,6 @@ export default function ReceptionForm({
                 <TableCell>{items.find((it) => it.id === row.item_id)?.name ?? "(personnalisé)"}</TableCell>
                 <TableCell>{row.quantity}</TableCell>
                 <TableCell>{row.weight ?? ""}</TableCell>
-                <TableCell>{row.type?.name ?? ""}</TableCell>
-                <TableCell>{row.height ?? ""}</TableCell>
-                <TableCell>{row.grammage ?? ""}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
                     <Button type="button" color="default" onPress={() => openModalForEdit(idx)}>
@@ -159,7 +151,7 @@ export default function ReceptionForm({
           Annuler
         </Button>
         <Button type="submit" color="primary">
-          Enregistrer réception
+          Enregistrer consommation
         </Button>
       </div>
       <Modal isOpen={isModalOpen} onOpenChange={setIsModalOpen} size="2xl">
@@ -181,25 +173,9 @@ export default function ReceptionForm({
                 {(item: any) => <AutocompleteItem key={item.key}>{item.label}</AutocompleteItem>}
               </Autocomplete>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 <Input label="Quantité" type="number" value={String(editRow.quantity ?? "")} onChange={(e: any) => setEditRow((r) => ({ ...r, quantity: Number(e.target.value) }))} />
                 <Input label="Poids (kg)" type="number" value={String(editRow.weight ?? "")} onChange={(e: any) => setEditRow((r) => ({ ...r, weight: e.target.value === "" ? undefined : Number(e.target.value) }))} />
-                <Autocomplete
-                  allowsCustomValue
-                  className="w-full"
-                  defaultItems={Types.map((t) => ({ key: t, label: t }))}
-                  label="Type"
-                  variant="bordered"
-                  value={editRow.type?.name ?? ""}
-                  onValueChange={(val: any) => setEditRow((r) => ({ ...r, type: { name: val } }))}
-                >
-                  {(item: any) => <AutocompleteItem key={item.key}>{item.label}</AutocompleteItem>}
-                </Autocomplete>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <Input label="Hauteur (cm)" type="number" value={String(editRow.height ?? "")} onChange={(e: any) => setEditRow((r) => ({ ...r, height: e.target.value === "" ? undefined : Number(e.target.value) }))} />
-                <Input label="Grammage (g/m²)" type="number" value={String(editRow.grammage ?? "")} onChange={(e: any) => setEditRow((r) => ({ ...r, grammage: e.target.value === "" ? undefined : Number(e.target.value) }))} />
               </div>
 
               <div className="flex gap-2 justify-end">

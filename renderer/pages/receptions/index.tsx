@@ -19,18 +19,18 @@ import { SearchIcon } from "@/components/icons";
 import ReceptionForm from "@/components/receptionForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
-import type { Reception, StockMovement, Item, Supplier } from "@/types/schema";
+import type { Transaction, StockMovement, Item, Supplier } from "@/types/schema";
 import * as dbApi from "@/utils/api";
 
 const useDbReceptions = () => {
-  const [receptions, setReceptions] = useState<Reception[]>([]);
+  const [receptions, setReceptions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const refresh = async () => {
     setLoading(true);
     setError(null);
-    const res = await dbApi.getAll<Reception>("reception");
-    if (res.success) setReceptions(res.data);
+    const res = await dbApi.getAll<Transaction>("transaction");
+    if (res.success) setReceptions(res.data.filter(t => t.type === 'RECEPTION'));
     else if ("error" in res) setError(res.error);
     setLoading(false);
   };
@@ -71,8 +71,8 @@ export default function ReceptionsPage() {
   const { receptions, loading, error, refresh } = useDbReceptions();
   const { items } = useDbItems();
   const { suppliers } = useDbSuppliers();
-  const [editingReception, setEditingReception] = useState<Reception | null>(null);
-  const [deletingReception, setDeletingReception] = useState<Reception | null>(null);
+  const [editingReception, setEditingReception] = useState<Transaction | null>(null);
+  const [deletingReception, setDeletingReception] = useState<Transaction | null>(null);
   const {
     isOpen: isDeleteConfirmOpen,
     onOpen: onDeleteConfirmOpen,
@@ -109,7 +109,7 @@ export default function ReceptionsPage() {
     return mouvements.reduce((acc, m) => acc + m.quantity, 0);
   };
 
-  const openEditModal = (reception: Reception) => {
+  const openEditModal = (reception: Transaction) => {
     setEditingReception(reception);
     onOpen();
   };
@@ -119,14 +119,14 @@ export default function ReceptionsPage() {
     onOpen();
   };
 
-  const openDeleteConfirm = (reception: Reception) => {
+  const openDeleteConfirm = (reception: Transaction) => {
     setDeletingReception(reception);
     onDeleteConfirmOpen();
   };
 
   const handleDelete = async () => {
     if (deletingReception) {
-      const res = await dbApi.remove("reception", deletingReception.id);
+      const res = await dbApi.remove("transaction", deletingReception.id);
       if (!res.success && "error" in res) alert("Erreur: " + res.error);
       else await refresh();
       onDeleteConfirmOpenChange();
@@ -222,12 +222,12 @@ export default function ReceptionsPage() {
                     onCancel={() => onClose()}
                     onSubmit={async (payload) => {
                       const res = editingReception
-                        ? await dbApi.update<Reception>(
-                            "reception",
+                        ? await dbApi.update<Transaction>(
+                            "transaction",
                             editingReception.id,
                             payload
                           )
-                        : await dbApi.create<Reception>("reception", payload);
+                        : await dbApi.create<Transaction>("transaction", payload);
                       if (!res.success && "error" in res)
                         alert("Erreur: " + res.error);
                       else await refresh();

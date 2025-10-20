@@ -34,9 +34,10 @@ export interface StockMovement {
   date: string; // ISO format recommended
   user_id?: number;
   notes?: string;
-  reception_id?: number;
+  transaction_id?: number;
+  Transaction?: Transaction; // Include full transaction details
 }
-export interface Reception {
+export interface Transaction {
   id: number;
   mouvement_id: number;
   StockMovements: StockMovement[]; // Include full movement details
@@ -45,6 +46,7 @@ export interface Reception {
   date: string; // ISO format recommended
   user_id?: number;
   notes?: string;
+  type: "RECEPTION" | "CONSOMMATION";
 }
 export interface User {
   id: number;

@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { User, Supplier, Location, Type, Item, StockMovement, Reception } from './db';
+import { User, Supplier, Location, Type, Item, StockMovement, Transaction } from './db';
 
 const getModelIncludes = (modelName: string) => {
     switch (modelName) {
@@ -7,8 +7,8 @@ const getModelIncludes = (modelName: string) => {
             return [Type, Supplier, Location, StockMovement];
         case 'stockmovement':
             return [Item];
-        case 'reception':
-            return [StockMovement];
+        case 'transaction':
+            return [StockMovement, Supplier];
         default:
             return [];
     }
@@ -21,7 +21,7 @@ const handleCRUD = (model) => {
 
   ipcMain.handle(`${modelName}:create`, async (_, data) => {
     try {
-        const result = await model.create(data);
+        const result = await model.create(data, { include: [StockMovement] });
         const plainData = result.get({ plain: true });
         return { success: true, data: plainData };
     } catch (error) {
@@ -92,4 +92,24 @@ ipcMain.handle('item:getBySku', async (_, sku) => {
 });
 
 // Register CRUD handlers for all models
-[User, Supplier, Location, Type, Item, StockMovement, Reception].forEach(handleCRUD);
+[User, Supplier, Location, Type, Item, StockMovement, Transaction].forEach(handleCRUD);
+
+ipcMain.handle('consommation:create', async (_, data) => {
+    try {
+        const transactionData = {
+            ...data,
+            type: 'CONSOMMATION',
+            StockMovements: data.Mouvement.map(m => ({
+                ...m,
+                type: 'OUT',
+                quantity: -m.quantity,
+                weight: m.weight ? -m.weight : undefined,
+            })),
+        };
+        const result = await Transaction.create(transactionData, { include: [StockMovement] });
+        const plainData = result.get({ plain: true });
+        return { success: true, data: plainData };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});

@@ -1,6 +1,6 @@
 
 // Typed CRUD API utility for renderer
-type ModelName = 'user' | 'supplier' | 'location' | 'type' | 'item' | 'stockmovement' | 'reception';
+type ModelName = 'user' | 'supplier' | 'location' | 'type' | 'item' | 'stockmovement' | 'transaction';
 
 type ApiResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -9,6 +9,10 @@ const api = (window as any).api;
 
 export async function create<T>(model: ModelName, data: any): Promise<ApiResult<T>> {
   return api.invoke(`${model}:create`, data);
+}
+
+export async function createConsommation<T>(data: any): Promise<ApiResult<T>> {
+  return api.invoke('consommation:create', data);
 }
 export async function getAll<T>(model: ModelName): Promise<ApiResult<T[]>> {
   return api.invoke(`${model}:getAll`);
