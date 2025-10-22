@@ -16,28 +16,28 @@ import {
   useDisclosure,
 } from "@nextui-org/react";
 import { SearchIcon } from "@/components/icons";
-import ReceptionForm from "@/components/receptionForm";
+import TransactionForm from "@/components/TransactionForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
 import type { Transaction, StockMovement, Item, Supplier } from "@/types/schema";
 import * as dbApi from "@/utils/api";
 
-const useDbReceptions = () => {
-  const [receptions, setReceptions] = useState<Transaction[]>([]);
+const useDbConsommations = () => {
+  const [consommations, setConsommations] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const refresh = async () => {
     setLoading(true);
     setError(null);
     const res = await dbApi.getAll<Transaction>("transaction");
-    if (res.success) setReceptions(res.data.filter(t => t.type === 'CONSOMMATION'));
+    if (res.success) setConsommations(res.data.filter(t => t.type === 'CONSOMMATION'));
     else if ("error" in res) setError(res.error);
     setLoading(false);
   };
   useEffect(() => {
     refresh();
   }, []);
-  return { receptions, loading, error, refresh };
+  return { consommations, loading, error, refresh };
 };
 
 const useDbItems = () => {
@@ -68,11 +68,11 @@ export default function ConsommationPage() {
   const [search, setSearch] = useState("");
   const [selectionMode, setSelectionMode] = useState<"none" | "single" | "multiple">("single");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const { receptions, loading, error, refresh } = useDbReceptions();
+  const { consommations, loading, error, refresh } = useDbConsommations();
   const { items } = useDbItems();
   const { suppliers } = useDbSuppliers();
-  const [editingReception, setEditingReception] = useState<Transaction | null>(null);
-  const [deletingReception, setDeletingReception] = useState<Transaction | null>(null);
+  const [editingConsommation, setEditingConsommation] = useState<Transaction | null>(null);
+  const [deletingConsommation, setDeletingConsommation] = useState<Transaction | null>(null);
   const {
     isOpen: isDeleteConfirmOpen,
     onOpen: onDeleteConfirmOpen,
@@ -80,7 +80,7 @@ export default function ConsommationPage() {
   } = useDisclosure();
 
   const filteredList = useMemo(() => {
-    let filtered = receptions;
+    let filtered = consommations;
     if (search.trim()) {
       const s = search.toLowerCase();
       filtered = filtered.filter(
@@ -91,7 +91,7 @@ export default function ConsommationPage() {
       );
     }
     return filtered;
-  }, [receptions, search]);
+  }, [consommations, search]);
 
   useEffect(() => {
     const handleKeyDown = () => setSelectionMode("multiple");
@@ -109,24 +109,24 @@ export default function ConsommationPage() {
     return mouvements.reduce((acc, m) => acc + m.quantity, 0);
   };
 
-  const openEditModal = (reception: Transaction) => {
-    setEditingReception(reception);
+  const openEditModal = (consommation: Transaction) => {
+    setEditingConsommation(consommation);
     onOpen();
   };
 
   const openNewModal = () => {
-    setEditingReception(null);
+    setEditingConsommation(null);
     onOpen();
   };
 
-  const openDeleteConfirm = (reception: Transaction) => {
-    setDeletingReception(reception);
+  const openDeleteConfirm = (consommation: Transaction) => {
+    setDeletingConsommation(consommation);
     onDeleteConfirmOpen();
   };
 
   const handleDelete = async () => {
-    if (deletingReception) {
-      const res = await dbApi.remove("transaction", deletingReception.id);
+    if (deletingConsommation) {
+      const res = await dbApi.remove("transaction", deletingConsommation.id);
       if (!res.success && "error" in res) alert("Erreur: " + res.error);
       else await refresh();
       onDeleteConfirmOpenChange();
@@ -136,11 +136,11 @@ export default function ConsommationPage() {
   return (
     <DefaultLayout>
       <Head>
-        <title>Receptions - Nextron (with-next-ui)</title>
+        <title>Consommation - Nextron (with-next-ui)</title>
       </Head>
 
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold mb-2">Bons de réception</h1>
+        <h1 className="text-2xl font-bold mb-2">Bons de consommation</h1>
         <section className="flex gap-4 items-end">
           <Input
             labelPlacement="outside"
@@ -154,12 +154,12 @@ export default function ConsommationPage() {
             className="flex-1"
           />
           <Button color="primary" onPress={openNewModal}>
-            Nouveau bon de réception
+            Nouveau bon de consommation
           </Button>
         </section>
         {error && <div className="text-red-500">Erreur: {error}</div>}
         <Table
-          aria-label="Liste des bons de réception"
+          aria-label="Liste des bons de consommation"
           selectionMode={selectionMode}
           showSelectionCheckboxes={false}
         >
@@ -172,7 +172,7 @@ export default function ConsommationPage() {
             <TableColumn>Notes</TableColumn>
             <TableColumn>Actions</TableColumn>
           </TableHeader>
-          <TableBody isLoading={loading} emptyContent={"Aucune réception à afficher"}>
+          <TableBody isLoading={loading} emptyContent={"Aucune consommation à afficher"}>
             {filteredList.map((r) => (
               <TableRow key={r.id}>
                 <TableCell>{r.id}</TableCell>
@@ -209,22 +209,23 @@ export default function ConsommationPage() {
               <>
                 <ModalHeader>
                   <h2 className="text-xl font-bold">
-                    {editingReception
-                      ? "Modifier le bon de réception"
-                      : "Nouveau bon de réception"}
+                    {editingConsommation
+                      ? "Modifier le bon de consommation"
+                      : "Nouveau bon de consommation"}
                   </h2>
                 </ModalHeader>
                 <ModalBody>
-                  <ReceptionForm
+                  <TransactionForm
                     items={items}
                     suppliers={suppliers}
-                    initial={editingReception}
+                    initial={editingConsommation}
+                    transactionType="CONSOMMATION"
                     onCancel={() => onClose()}
                     onSubmit={async (payload) => {
-                      const res = editingReception
+                      const res = editingConsommation
                         ? await dbApi.update<Transaction>(
                             "transaction",
-                            editingReception.id,
+                            editingConsommation.id,
                             payload
                           )
                         : await dbApi.create<Transaction>("transaction", payload);
@@ -249,8 +250,8 @@ export default function ConsommationPage() {
                 <ModalHeader>Confirmer la suppression</ModalHeader>
                 <ModalBody>
                   <p>
-                    Êtes-vous sûr de vouloir supprimer la réception #
-                    {deletingReception?.id}?
+                    Êtes-vous sûr de vouloir supprimer la consommation #
+                    {deletingConsommation?.id}?
                   </p>
                   <div className="flex justify-end gap-2">
                     <Button color="default" onPress={onClose}>

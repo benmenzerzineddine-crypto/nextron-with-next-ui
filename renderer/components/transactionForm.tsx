@@ -1,33 +1,45 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { getAll } from "../utils/api";
 import { Button, Input, Autocomplete, AutocompleteItem, Modal, ModalContent, ModalHeader, ModalBody, Table, TableHeader, TableColumn, TableBody, TableRow, TableCell } from "@nextui-org/react";
 import type { Transaction, StockMovement, Item, Type, Supplier, Location } from "../types/schema";
 import { computeSku } from "../utils/sku";
 
 type MovementRow = { item_id?: number; quantity: number; weight?: number; type?: Partial<Type>; height?: number; grammage?: number };
 
-export default function ReceptionForm({
+export default function TransactionForm({
   initial,
   items = [],
   suppliers = [],
   onSubmit,
   onCancel,
+  transactionType,
 }: {
   initial?: Partial<Transaction>;
   items?: Item[];
   suppliers?: Supplier[];
   onSubmit?: (r: Partial<Transaction>) => void;
   onCancel?: () => void;
+  transactionType: "RECEPTION" | "CONSOMMATION";
 }) {
-  const Types = ["KRAFT", "PAPIER COUCHÉ", "TESTLINER-B", "TESTLINER-M", "FLOUTING"];
+  const [types, setTypes] = useState<string[]>([]);
+  useEffect(() => {
+    const fetchTypes = async () => {
+      const result = await getAll<Type>("type");
+      if (result.success) {
+        setTypes(result.data.map((t) => t.name));
+      }
+    };
+    fetchTypes();
+  }, []);
   const [supplierId, setSupplierId] = React.useState(initial?.supplier_id);
   const [date, setDate] = React.useState(initial?.date ?? new Date().toISOString().slice(0, 10));
   const [notes, setNotes] = React.useState(initial?.notes ?? "");
   const [movements, setMovements] = React.useState<MovementRow[]>(
-    (initial?.Mouvement?.map((m) => ({ item_id: m.item_id, quantity: m.quantity, weight: (m as any).weight })) as MovementRow[]) ??
-      [{ item_id: items[0]?.id, quantity: 0, weight: undefined, type: items[0]?.type, height: items[0]?.height, grammage: items[0]?.grammage }]
+    (initial?.StockMovements?.map((m) => ({ item_id: m.item_id, quantity: m.quantity, weight: (m as any).weight })) as MovementRow[]) ??
+      [{ item_id: items[0]?.id, quantity: 0, weight: undefined, type: items[0]?.Type, height: items[0]?.height, grammage: items[0]?.grammage }]
   );
 
-  const addRow = () => setMovements((s) => [...s, { item_id: items[0]?.id, quantity: 0, weight: undefined, type: items[0]?.type, height: items[0]?.height, grammage: items[0]?.grammage }]);
+  const addRow = () => setMovements((s) => [...s, { item_id: items[0]?.id, quantity: 0, weight: undefined, type: items[0]?.Type, height: items[0]?.height, grammage: items[0]?.grammage }]);
   const removeRow = (idx: number) => setMovements((s) => s.filter((_, i) => i !== idx));
   const updateRow = (idx: number, k: keyof MovementRow, v: any) =>
     setMovements((s) => s.map((r, i) => (i === idx ? { ...r, [k]: v } : r)));
@@ -35,10 +47,10 @@ export default function ReceptionForm({
   // Modal state for adding/editing a movement
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingIndex, setEditingIndex] = React.useState<number | null>(null);
-  const [editRow, setEditRow] = React.useState<MovementRow>({ item_id: items[0]?.id, quantity: 1, weight: undefined, type: items[0]?.type, height: items[0]?.height, grammage: items[0]?.grammage });
+  const [editRow, setEditRow] = React.useState<MovementRow>({ item_id: items[0]?.id, quantity: 1, weight: undefined, type: items[0]?.Type, height: items[0]?.height, grammage: items[0]?.grammage });
 
   const openModalForAdd = () => {
-    setEditRow({ item_id: items[0]?.id, quantity: 1, weight: undefined, type: items[0]?.type, height: items[0]?.height, grammage: items[0]?.grammage });
+    setEditRow({ item_id: items[0]?.id, quantity: 1, weight: undefined, type: items[0]?.Type, height: items[0]?.height, grammage: items[0]?.grammage });
     setEditingIndex(null);
     setIsModalOpen(true);
   };
@@ -78,13 +90,13 @@ export default function ReceptionForm({
       supplier_id: supplierId,
       date,
       notes,
-      type: "RECEPTION",
+      type: transactionType,
       StockMovements: movements.map((m, i) => ({
         id: i + 1,
         item_id: m.item_id ?? 0,
-        type: "IN",
-        quantity: m.quantity,
-        weight: m.weight,
+        type: transactionType === "RECEPTION" ? "IN" : "OUT",
+        quantity: transactionType === "RECEPTION" ? m.quantity : -m.quantity,
+        weight: m.weight ? (transactionType === "RECEPTION" ? m.weight : -m.weight) : undefined,
         date,
       })) as unknown as StockMovement[],
     };
@@ -159,7 +171,7 @@ export default function ReceptionForm({
           Annuler
         </Button>
         <Button type="submit" color="primary">
-          Enregistrer réception
+          Enregistrer {transactionType === "RECEPTION" ? "réception" : "consommation"}
         </Button>
       </div>
       <Modal isOpen={isModalOpen} onOpenChange={setIsModalOpen} size="2xl">
@@ -187,7 +199,7 @@ export default function ReceptionForm({
                 <Autocomplete
                   allowsCustomValue
                   className="w-full"
-                  defaultItems={Types.map((t) => ({ key: t, label: t }))}
+                  defaultItems={types.map((t) => ({ key: t, label: t }))}
                   label="Type"
                   variant="bordered"
                   value={editRow.type?.name ?? ""}

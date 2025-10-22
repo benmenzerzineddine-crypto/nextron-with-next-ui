@@ -16,7 +16,7 @@ import {
   useDisclosure,
 } from "@nextui-org/react";
 import { SearchIcon } from "@/components/icons";
-import ReceptionForm from "@/components/receptionForm";
+import TransactionForm from "@/components/TransactionForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
 import type { Transaction, StockMovement, Item, Supplier } from "@/types/schema";
@@ -215,10 +215,11 @@ export default function ReceptionsPage() {
                   </h2>
                 </ModalHeader>
                 <ModalBody>
-                  <ReceptionForm
+                  <TransactionForm
                     items={items}
                     suppliers={suppliers}
                     initial={editingReception}
+                    transactionType="RECEPTION"
                     onCancel={() => onClose()}
                     onSubmit={async (payload) => {
                       const res = editingReception

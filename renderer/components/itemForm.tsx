@@ -1,5 +1,5 @@
 import React from "react";
-import { Input, Button, Select, SelectItem } from "@nextui-org/react";
+import { Input, Button, Select, SelectItem, Autocomplete, AutocompleteItem } from "@nextui-org/react";
 import type { Item, Type, Supplier, Location } from "../types/schema";
 
 export default function ItemForm({
@@ -52,24 +52,24 @@ export default function ItemForm({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <Input label="Nom" name="name" value={name} onChange={(e: any) => setName(e.target.value)} isRequired />
         <Input label="SKU" name="sku" value={sku} onChange={(e: any) => setSku(e.target.value)} isRequired />
-        <Select label="Type" name="type_id" selectedKeys={typeId ? new Set([typeId]) : new Set()} onSelectionChange={(s) => setTypeId(Array.from(s as Set<string>)[0])}>
+        <Autocomplete label="Type" name="type_id" selectedKey={typeId} onSelectionChange={(s) => setTypeId(Array.from(s as string)[0])} listboxProps={{emptyContent:"Aucun résultat trouvé."}}>
           {types.map((t) => (
-            <SelectItem key={String(t.id)}>{t.name}</SelectItem>
+            <AutocompleteItem key={String(t.id)}>{t.name}</AutocompleteItem>
           ))}
-        </Select>
+        </Autocomplete>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <Select label="Fournisseur" name="supplier_id" selectedKeys={supplierId ? new Set([supplierId]) : new Set()} onSelectionChange={(s) => setSupplierId(Array.from(s as Set<string>)[0])}>
+        <Autocomplete label="Fournisseur" name="supplier_id" selectedKey={supplierId} onSelectionChange={(s) => setSupplierId(s as string)} listboxProps={{emptyContent:"Aucun résultat trouvé."}}>
           {suppliers.map((s) => (
-            <SelectItem key={String(s.id)}>{s.name}</SelectItem>
+            <AutocompleteItem key={String(s.id)}>{s.name}</AutocompleteItem>
           ))}
-        </Select>
-        <Select label="Emplacement" name="location_id" selectedKeys={locationId ? new Set([locationId]) : new Set()} onSelectionChange={(s) => setLocationId(Array.from(s as Set<string>)[0])}>
+        </Autocomplete>
+        <Autocomplete label="Emplacement" name="location_id" selectedKey={locationId} onSelectionChange={(s) => setLocationId(Array.from(s as string)[0])} listboxProps={{emptyContent:"Aucun résultat trouvé."}}>
           {locations.map((l) => (
-            <SelectItem key={String(l.id)}>{l.name}</SelectItem>
+            <AutocompleteItem key={String(l.id)}>{l.name}</AutocompleteItem>
           ))}
-        </Select>
+        </Autocomplete>
         <Input label="Hauteur (cm)" name="height" type="number" value={height ?? ""} onChange={(e: any) => setHeight(e.target.value)} />
         <Input label="Grammage (g/m²)" name="grammage" type="number" value={grammage ?? ""} onChange={(e: any) => setGrammage(e.target.value)} />
         <Input
