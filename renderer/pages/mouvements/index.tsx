@@ -191,7 +191,7 @@ export default function MouvementsPage() {
             <TableColumn>SKU</TableColumn>
             <TableColumn>Type</TableColumn>
             <TableColumn>Quantité</TableColumn>
-            <TableColumn>Weight</TableColumn>
+            <TableColumn>Poid</TableColumn>
             <TableColumn>Date</TableColumn>
             <TableColumn>Notes</TableColumn>
             <TableColumn>Actions</TableColumn>
