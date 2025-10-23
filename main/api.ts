@@ -21,7 +21,7 @@ const handleCRUD = (model) => {
 
   ipcMain.handle(`${modelName}:create`, async (_, data) => {
     try {
-        const result = await model.create(data, { include: [StockMovement] });
+        const result = await model.create(data, { include: includes });
         const plainData = result.get({ plain: true });
         return { success: true, data: plainData };
     } catch (error) {

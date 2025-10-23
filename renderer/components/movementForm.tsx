@@ -142,7 +142,7 @@ const MovementDetailsForm = ({
       item_id: selectedItem.id,
       user_id: userId ? Number(userId) : undefined,
       type: type as StockMovement['type'],
-      quantity: Number(quantity),
+      quantity: type === "IN" ? Number(quantity) : -Number(quantity),
       weight: weight ? Number(weight) : undefined,
       date,
       notes,
