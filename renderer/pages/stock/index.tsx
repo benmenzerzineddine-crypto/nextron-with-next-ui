@@ -1,12 +1,14 @@
 "use client";
 import { useState, useMemo, useEffect } from "react";
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Input, Button, Modal, ModalContent, ModalHeader, ModalBody, useDisclosure, Tabs, Tab } from "@nextui-org/react";
+import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Input, Button, Modal, ModalContent, ModalHeader, ModalBody, useDisclosure, Tabs, Tab, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@nextui-org/react";
 import { SearchIcon } from "@/components/icons";
 import ItemForm from "@/components/itemForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
 import type { Item, Type, Supplier, Location, StockMovement } from "@/types/schema";
 import * as dbApi from "@/utils/api";
+import { saveAs } from "file-saver";
+import * as XLSX from "xlsx";
 
 const useDbItems = () => {
   const [items, setItems] = useState<Item[]>([]);
@@ -131,6 +133,69 @@ export default function StockPage() {
     if (!mouvements) return 0;
     return mouvements.reduce((acc, m) => acc + m.weight, 0);
   };
+
+  const handleExport = (format: "excel" | "csv" | "json") => {
+    const dataToExport = filteredList.map(item => ({
+      ID: item.id,
+      Nom: item.name,
+      Type: item.Type?.name,
+      Description: item.description,
+      SKU: item.sku,
+      Fournisseur: item.Supplier?.name,
+      "Largeur (cm)": item.height,
+      "Grammage (g/m²)": item.grammage,
+      Quantité: CalculateQty(item.StockMovements),
+      Poid: CalculateWeight(item.StockMovements),
+      Emplacement: item.Location?.name,
+    }));
+
+    if (format === "json") {
+      const json = JSON.stringify(dataToExport, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      saveAs(blob, "stock.json");
+    } else if (format === "csv") {
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      saveAs(blob, "stock.csv");
+    } else if (format === "excel") {
+      const header = Object.keys(dataToExport[0] || {});
+      const ws = XLSX.utils.aoa_to_sheet([header]);
+
+      // Style the header
+      const headerStyle = {
+        fill: { fgColor: { rgb: "C0C0C0" } }, // Silver background
+        font: { bold: true },
+        alignment: { horizontal: "center", vertical: "center" },
+      };
+
+      header.forEach((h, i) => {
+        const cellRef = XLSX.utils.encode_cell({ r: 0, c: i });
+        if (ws[cellRef]) {
+          ws[cellRef].s = headerStyle;
+        }
+      });
+
+      XLSX.utils.sheet_add_json(ws, dataToExport, { origin: "A2", skipHeader: true });
+
+      // Set column widths
+      const columnWidths = header.map((key, i) => {
+        const maxLength = Math.max(
+          key.length,
+          ...dataToExport.map(row => (row[key] ? row[key].toString().length : 0))
+        );
+        return { wch: maxLength + 2 }; // +2 for a little extra padding
+      });
+      ws["!cols"] = columnWidths;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Stock");
+      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
+      saveAs(blob, "stock.xlsx");
+    }
+  };
+
   return (
     <DefaultLayout>
       <Head>
@@ -138,7 +203,20 @@ export default function StockPage() {
       </Head>
 
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold mb-2">Stock</h1>
+        <section className="flex justify-between gap-4 items-end">
+          <h1 className="text-2xl font-bold mb-2">Stock</h1>
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="bordered">Export</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Static Actions">
+              <DropdownItem onPress={() => handleExport("excel")}>Export to Excel</DropdownItem>
+              <DropdownItem onPress={() => handleExport("csv")}>Export to CSV</DropdownItem>
+              <DropdownItem onPress={() => handleExport("json")}>Export to JSON</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+
+        </section>
         <Tabs
           fullWidth
           aria-label="Filtrer par type"
@@ -166,6 +244,7 @@ export default function StockPage() {
             Nouvel article
           </Button>
         </section>
+
         {error && <div className="text-red-500">Erreur: {error}</div>}
         <Table
           aria-label="Liste des articles (bobines)"
