@@ -34,6 +34,8 @@ import { DateValue } from "@react-types/datepicker";
 import { getLocalTimeZone } from "@internationalized/date";
 import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
+import JsExcelTemplate from "js-excel-template";
+import { ipcMain, ipcRenderer } from "electron";
 
 const useDbMovements = () => {
   const [movements, setMovements] = useState<StockMovement[]>([]);
@@ -180,38 +182,7 @@ export default function MouvementsPage() {
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       saveAs(blob, "mouvements.csv");
     } else if (format === "excel") {
-      const header = Object.keys(dataToExport[0] || {});
-      const ws = XLSX.utils.aoa_to_sheet([header]);
-
-      const headerStyle = {
-        fill: { fgColor: { rgb: "C0C0C0" } },
-        font: { bold: true },
-        alignment: { horizontal: "center", vertical: "center" },
-      };
-
-      header.forEach((h, i) => {
-        const cellRef = XLSX.utils.encode_cell({ r: 0, c: i });
-        if (ws[cellRef]) {
-          ws[cellRef].s = headerStyle;
-        }
-      });
-
-      XLSX.utils.sheet_add_json(ws, dataToExport, { origin: "A2", skipHeader: true });
-
-      const columnWidths = header.map((key, i) => {
-        const maxLength = Math.max(
-          key.length,
-          ...dataToExport.map(row => (row[key] ? row[key].toString().length : 0))
-        );
-        return { wch: maxLength + 2 };
-      });
-      ws["!cols"] = columnWidths;
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Mouvements");
-      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
-      saveAs(blob, "mouvements.xlsx");
+      window.ipc?.api?.send!('xslx', dataToExport);
     }
   };
 
