@@ -64,7 +64,7 @@ export default function CommandForm() {
         />
         <Input
           isRequired
-          label="Largeur (cm)"
+          label="Laise (cm)"
           name="height"
           type="number"
           placeholder="ex: 120"

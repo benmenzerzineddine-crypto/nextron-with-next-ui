@@ -1,5 +1,8 @@
 import { Sequelize, DataTypes } from 'sequelize';
 import path from 'path';
+import fs from 'fs';
+import { dialog } from 'electron';
+import * as XLSX from 'xlsx';
 
 const isDev = process.env.NODE_ENV === 'development';
 const dbPath = isDev ? 'db.sqlite' : path.join(process.resourcesPath, 'db.sqlite');
@@ -47,8 +50,9 @@ const Supplier = sequelize.define('Supplier', {
     type: DataTypes.STRING,
     allowNull: false,
   },
-  origine: {
+  shortName: {
     type: DataTypes.STRING,
+    allowNull: true,
   },
 });
 
@@ -76,6 +80,10 @@ const Type = sequelize.define('Type', {
   name: {
     type: DataTypes.STRING,
     allowNull: false,
+  },
+  shortName: {
+    type: DataTypes.STRING,
+    allowNull: true,
   },
   description: {
     type: DataTypes.STRING,
@@ -107,6 +115,10 @@ const Item = sequelize.define('Item', {
   grammage: {
     type: DataTypes.FLOAT,
     allowNull: false,
+  },
+  reorderLevel: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
   },
 });
 
@@ -191,6 +203,113 @@ Transaction.belongsTo(User, { foreignKey: 'user_id' });
 sequelize.sync({ alter: true }).then(() => {
   console.log('Database & tables created!');
 });
+
+export const backupDatabase = async () => {
+  const { filePath } = await dialog.showSaveDialog({
+    title: 'Save Database Backup',
+    defaultPath: `backup-${new Date().toISOString().slice(0, 10)}.sqlite`,
+    filters: [
+      { name: 'SQLite Files', extensions: ['sqlite'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+  });
+
+  if (filePath) {
+    try {
+      fs.copyFileSync(dbPath, filePath);
+      return { success: true, path: filePath };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+  return { success: false, error: 'Backup cancelled' };
+};
+
+export const exportTable = async (tableName: string) => {
+  const modelName = tableName.charAt(0).toUpperCase() + tableName.slice(1);
+  const model = sequelize.models[modelName];
+  if (!model) {
+    return { success: false, error: 'Invalid table name' };
+  }
+
+  const { filePath, canceled } = await dialog.showSaveDialog({
+    title: `Export ${tableName} Data`,
+    defaultPath: `${tableName}-${new Date().toISOString().slice(0, 10)}`,
+    filters: [
+      { name: 'CSV Files', extensions: ['csv'] },
+      { name: 'JSON Files', extensions: ['json'] },
+      { name: 'XLSX Files', extensions: ['xlsx'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+  });
+
+  if (!canceled && filePath) {
+    try {
+      const data = await model.findAll({ raw: true });
+      const extension = filePath.split('.').pop();
+
+      if (extension === 'csv') {
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const csvData = XLSX.utils.sheet_to_csv(worksheet);
+        fs.writeFileSync(filePath, csvData);
+      } else if (extension === 'json') {
+        fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+      } else if (extension === 'xlsx') {
+        const worksheet = XLSX.utils.json_to_sheet(data);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, tableName);
+        XLSX.writeFile(workbook, filePath);
+      }
+
+      return { success: true, path: filePath };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+  return { success: false, error: 'Export cancelled' };
+};
+
+export const importTable = async (tableName: string) => {
+  const modelName = tableName.charAt(0).toUpperCase() + tableName.slice(1);
+  const model = sequelize.models[modelName];
+  if (!model) {
+    return { success: false, error: 'Invalid table name' };
+  }
+
+  const { filePaths, canceled } = await dialog.showOpenDialog({
+    title: `Import Data to ${tableName}`,
+    filters: [
+      { name: 'CSV Files', extensions: ['csv'] },
+      { name: 'JSON Files', extensions: ['json'] },
+      { name: 'XLSX Files', extensions: ['xlsx'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+    properties: ['openFile'],
+  });
+
+  if (!canceled && filePaths && filePaths.length > 0) {
+    const filePath = filePaths[0];
+    try {
+      const extension = filePath.split('.').pop();
+      let data;
+
+      if (extension === 'csv' || extension === 'xlsx') {
+        const workbook = XLSX.readFile(filePath);
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        data = XLSX.utils.sheet_to_json(worksheet);
+      } else if (extension === 'json') {
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        data = JSON.parse(fileContent);
+      }
+
+      await model.bulkCreate(data);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+  return { success: false, error: 'Import cancelled' };
+};
 
 export {
   sequelize,

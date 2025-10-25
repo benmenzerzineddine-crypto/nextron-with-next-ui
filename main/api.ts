@@ -1,5 +1,5 @@
 import { ipcMain } from 'electron';
-import { User, Supplier, Location, Type, Item, StockMovement, Transaction } from './db';
+import { User, Supplier, Location, Type, Item, StockMovement, Transaction, backupDatabase, exportTable, importTable } from './db';
 
 const getModelIncludes = (modelName: string) => {
     switch (modelName) {
@@ -112,4 +112,16 @@ ipcMain.handle('consommation:create', async (_, data) => {
     } catch (error) {
         return { success: false, error: error.message };
     }
+});
+
+ipcMain.handle('db:backup', async () => {
+    return await backupDatabase();
+});
+
+ipcMain.handle('db:export', async (_, tableName: string) => {
+    return await exportTable(tableName);
+});
+
+ipcMain.handle('db:import', async (_, tableName: string) => {
+    return await importTable(tableName);
 });

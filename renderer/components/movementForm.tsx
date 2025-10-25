@@ -1,8 +1,6 @@
 import React from "react";
-import { Input, Button, Select, SelectItem, Card, CardBody } from "@nextui-org/react";
+import { Autocomplete, AutocompleteItem, Button, Card, CardBody, Input, Select, SelectItem } from "@nextui-org/react";
 import type { StockMovement, Item, User } from "../types/schema";
-import * as api from "@/utils/api";
-import { isApiError } from "@/utils/types";
 
 const ItemSelectionForm = ({
   items = [],
@@ -13,74 +11,33 @@ const ItemSelectionForm = ({
   selectedItem?: Partial<Item>;
   onItemSelect: (item: Partial<Item>) => void;
 }) => {
-  const [sku, setSku] = React.useState<string>("");
-  const [isSearching, setIsSearching] = React.useState(false);
   const [itemId, setItemId] = React.useState<string | undefined>(selectedItem?.id ? String(selectedItem.id) : undefined);
-
-  const searchItem = async () => {
-    if (!sku) return;
-    
-    setIsSearching(true);
-    try {
-      const response = await api.getItemBySku<Item>(sku);
-      if (!isApiError(response) && response.data) {
-        const found = response.data;
-        setItemId(String(found.id));
-        onItemSelect(found);
-      } else {
-        alert("Article non trouvé");
-      }
-    } catch (error) {
-      console.error("Error searching item:", error);
-      alert("Erreur lors de la recherche");
-    } finally {
-      setIsSearching(false);
-    }
-  };
 
   return (
     <div className="space-y-4">
       <div className="flex gap-3 items-end">
-        <Input
-          label="SKU"
-          value={sku}
-          onChange={(e) => setSku(e.target.value)}
-          onKeyDown={async (e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              await searchItem();
-            }
-          }}
-          endContent={
-            <Button 
-              isIconOnly 
-              size="sm" 
-              variant="flat" 
-              isLoading={isSearching}
-              onPress={searchItem}
-            >
-              🔍
-            </Button>
-          }
-        />
-        <Select 
-          label="Article" 
-          name="item_id" 
-          selectedKeys={itemId ? new Set([itemId]) : new Set()} 
-          onSelectionChange={(s) => {
-            const newItemId = Array.from(s as Set<string>)[0];
+        <Autocomplete
+        allowsCustomValue
+          label="Article"
+          placeholder="Rechercher un article"
+          selectedKey={itemId}
+          onSelectionChange={(key) => {
+            const newItemId = key as string;
             setItemId(newItemId);
-            const selectedItem = items.find(it => String(it.id) === newItemId);
-            if (selectedItem) {
-              setSku(selectedItem.sku || '');
-              onItemSelect(selectedItem);
+            const selected = items.find(it => String(it.id) === newItemId);
+            if (selected) {
+              onItemSelect(selected);
             }
           }}
+          listboxProps={{
+            emptyContent: "Aucun résultat trouvé.",
+          }}
+          
         >
           {items.map((it) => (
-            <SelectItem key={String(it.id)}>{it.name}</SelectItem>
+            <AutocompleteItem textValue={it.sku + it.name} key={String(it.id)}>{it.sku} | {it.name}</AutocompleteItem>
           ))}
-        </Select>
+        </Autocomplete>
       </div>
       {selectedItem && (
         <Card>
@@ -96,7 +53,8 @@ const ItemSelectionForm = ({
               </div>
               <div>
                 <p className="text-small text-default-500">Stock actuel</p>
-                <p>{} unités</p>
+                <p>{selectedItem.StockMovements?.reduce((acc, m) => acc + m.quantity, 0) ?? 0
+                }</p>
               </div>
               <div>
                 <p className="text-small text-default-500">Emplacement</p>
@@ -137,13 +95,18 @@ const MovementDetailsForm = ({
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!quantity) return alert("Quantité requise");
+    const movementType = type === "IN" ? "IN" : "OUT";
+    const Quantity = (Number(quantity) < 0 ? Number(quantity.split('-')[1]): Number(quantity));
+    const Weight = (Number(weight) < 0 ? Number(weight.split('-')[1]): Number(weight))
+    const adjustedQuantity = movementType === "IN" ? Quantity: -Number(Quantity);
+    const adjustedWeight = movementType === "IN" ? Weight: -Number(Weight);
     onSubmit({
       ...initial,
       item_id: selectedItem.id,
       user_id: userId ? Number(userId) : undefined,
       type: type as StockMovement['type'],
-      quantity: type === "IN" ? Number(quantity) : -Number(quantity),
-      weight: weight ? Number(weight) : undefined,
+      quantity: adjustedQuantity,
+      weight: adjustedWeight,
       date,
       notes,
     });
@@ -204,7 +167,7 @@ export default function MovementForm({
     initial?.item_id ? items.find(i => i.id === initial.item_id) : undefined
   );
   const [step, setStep] = React.useState<'item' | 'details'>('item');
-
+  console.log(selectedItem)
   return (
     <div className="w-full max-w-2xl p-4 space-y-4">
       {step === 'item' ? (

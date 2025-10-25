@@ -132,15 +132,15 @@ export default function SuppliersPage() {
           showSelectionCheckboxes={false}
         >
           <TableHeader>
-            <TableColumn>ID</TableColumn>
+            <TableColumn>N°</TableColumn>
             <TableColumn>Nom</TableColumn>
             <TableColumn>Origine</TableColumn>
             <TableColumn>Actions</TableColumn>
           </TableHeader>
           <TableBody isLoading={loading} emptyContent={"Aucun fournisseur à afficher"}>
-            {filteredList.map((s) => (
+            {filteredList.map((s,i) => (
               <TableRow key={s.id}>
-                <TableCell>{s.id}</TableCell>
+                <TableCell>{++i}</TableCell>
                 <TableCell>{s.name}</TableCell>
                 <TableCell>{s.origine}</TableCell>
                 <TableCell>

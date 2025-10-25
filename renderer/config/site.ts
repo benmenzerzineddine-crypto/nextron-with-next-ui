@@ -1,4 +1,4 @@
-import { HomeIcon, PackageIcon, TruckIcon, ClipboardListIcon, UsersIcon, MapPinIcon, TagIcon } from "@/components/icons";
+import { HomeIcon, PackageIcon, TruckIcon, ClipboardListIcon, UsersIcon, MapPinIcon, TagIcon, DatabaseIcon } from "@/components/icons";
 
 export type SiteConfig = typeof siteConfig;
 
@@ -8,7 +8,7 @@ export const siteConfig = {
   navItems: [
     {
       label: "Accueil",
-      href: "/",
+      href: "/home",
       icon: HomeIcon,
     },
     {
@@ -51,5 +51,10 @@ export const siteConfig = {
       href: "/types",
       icon: TagIcon,
     },
+    // {
+    //   label: "Database",
+    //   href: "/database",
+    //   icon: DatabaseIcon,
+    // },
   ],
 };

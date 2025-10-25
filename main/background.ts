@@ -23,6 +23,7 @@ if (isProd) {
       preload: path.join(__dirname, 'preload.js'),
     },
   })
+  mainWindow.setMenuBarVisibility(false)
 
   if (isProd) {
     await mainWindow.loadURL('app://./home')

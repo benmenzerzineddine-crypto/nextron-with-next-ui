@@ -17,7 +17,12 @@ import {
   Tabs,
   Tab,
   DateRangePicker,
-  RangeValue
+  RangeValue,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  SortDescriptor
 } from "@nextui-org/react";
 import { SearchIcon } from "@/components/icons";
 import MovementForm from "@/components/movementForm";
@@ -27,6 +32,8 @@ import type { StockMovement, Item, User } from "@/types/schema";
 import * as dbApi from "@/utils/api";
 import { DateValue } from "@react-types/datepicker";
 import { getLocalTimeZone } from "@internationalized/date";
+import { saveAs } from "file-saver";
+import * as XLSX from "xlsx";
 
 const useDbMovements = () => {
   const [movements, setMovements] = useState<StockMovement[]>([]);
@@ -80,6 +87,7 @@ export default function MouvementsPage() {
     onOpen: onDeleteConfirmOpen,
     onOpenChange: onDeleteConfirmOpenChange,
   } = useDisclosure();
+  const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({ column: "date", direction: "descending" });
 
   const filteredList = useMemo(() => {
     let filtered = movements;
@@ -90,8 +98,13 @@ export default function MouvementsPage() {
       const s = search.toLowerCase();
       filtered = filtered.filter(
         (m) =>
-          String(m.item_id).includes(s) ||
+          String(m.id).includes(s) ||
+          (m.Item?.name?.toLowerCase() || "").includes(s) ||
+          (m.Item?.sku?.toLowerCase() || "").includes(s) ||
+          (m.type?.toLowerCase() || "").includes(s) ||
           String(m.quantity).includes(s) ||
+          String(m.weight).includes(s) ||
+          new Date(m.date).toLocaleString().toLowerCase().includes(s) ||
           (m.notes?.toLowerCase() || "").includes(s)
       );
     }
@@ -101,8 +114,14 @@ export default function MouvementsPage() {
             return date >= dateRange.start.toDate(getLocalTimeZone()) && date <= dateRange.end.toDate(getLocalTimeZone());
         });
     }
-    return filtered;
-  }, [search, typeFilter, movements, dateRange]);
+    const sorted = [...filtered].sort((a, b) => {
+      const first = String(sortDescriptor.column).startsWith('Item.') ? a.Item?.[String(sortDescriptor.column).split('.')[1]] : a[sortDescriptor.column as keyof StockMovement];
+      const second = String(sortDescriptor.column).startsWith('Item.') ? b.Item?.[String(sortDescriptor.column).split('.')[1]] : b[sortDescriptor.column as keyof StockMovement];
+      const cmp = first < second ? -1 : first > second ? 1 : 0;
+      return sortDescriptor.direction === "descending" ? -cmp : cmp;
+    });
+    return sorted;
+  }, [search, typeFilter, movements, dateRange, sortDescriptor]);
 
   useEffect(() => {
     const handleKeyDown = () => setSelectionMode("multiple");
@@ -139,6 +158,63 @@ export default function MouvementsPage() {
     }
   };
 
+  const handleExport = (format: "excel" | "csv" | "json") => {
+    const dataToExport = filteredList.map(m => ({
+      ID: m.id,
+      Article: m.Item?.name,
+      SKU: m.Item?.sku,
+      Type: m.type,
+      Quantité: m.quantity,
+      Poid: m.weight,
+      Date: new Date(m.date).toLocaleString(),
+      Notes: m.notes ?? "",
+    }));
+
+    if (format === "json") {
+      const json = JSON.stringify(dataToExport, null, 2);
+      const blob = new Blob([json], { type: "application/json" });
+      saveAs(blob, "mouvements.json");
+    } else if (format === "csv") {
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+      const csv = XLSX.utils.sheet_to_csv(ws);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      saveAs(blob, "mouvements.csv");
+    } else if (format === "excel") {
+      const header = Object.keys(dataToExport[0] || {});
+      const ws = XLSX.utils.aoa_to_sheet([header]);
+
+      const headerStyle = {
+        fill: { fgColor: { rgb: "C0C0C0" } },
+        font: { bold: true },
+        alignment: { horizontal: "center", vertical: "center" },
+      };
+
+      header.forEach((h, i) => {
+        const cellRef = XLSX.utils.encode_cell({ r: 0, c: i });
+        if (ws[cellRef]) {
+          ws[cellRef].s = headerStyle;
+        }
+      });
+
+      XLSX.utils.sheet_add_json(ws, dataToExport, { origin: "A2", skipHeader: true });
+
+      const columnWidths = header.map((key, i) => {
+        const maxLength = Math.max(
+          key.length,
+          ...dataToExport.map(row => (row[key] ? row[key].toString().length : 0))
+        );
+        return { wch: maxLength + 2 };
+      });
+      ws["!cols"] = columnWidths;
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Mouvements");
+      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
+      saveAs(blob, "mouvements.xlsx");
+    }
+  };
+
   return (
     <DefaultLayout>
       <Head>
@@ -146,7 +222,19 @@ export default function MouvementsPage() {
       </Head>
 
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold mb-2">Mouvements de stock</h1>
+        <section className="flex justify-between gap-4 items-end">
+          <h1 className="text-2xl font-bold mb-2">Mouvements de stock</h1>
+          <Dropdown>
+            <DropdownTrigger>
+              <Button variant="bordered">Export</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Static Actions">
+              <DropdownItem onPress={() => handleExport("excel")}>Export to Excel</DropdownItem>
+              <DropdownItem onPress={() => handleExport("csv")}>Export to CSV</DropdownItem>
+              <DropdownItem onPress={() => handleExport("json")}>Export to JSON</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+        </section>
         <Tabs
           fullWidth
           aria-label="Filtrer par type"
@@ -184,22 +272,24 @@ export default function MouvementsPage() {
           aria-label="Liste des mouvements de stock"
           selectionMode={selectionMode}
           showSelectionCheckboxes={false}
+          sortDescriptor={sortDescriptor}
+          onSortChange={setSortDescriptor}
         >
           <TableHeader>
-            <TableColumn>ID</TableColumn>
-            <TableColumn>Article</TableColumn>
-            <TableColumn>SKU</TableColumn>
-            <TableColumn>Type</TableColumn>
-            <TableColumn>Quantité</TableColumn>
-            <TableColumn>Poid</TableColumn>
-            <TableColumn>Date</TableColumn>
-            <TableColumn>Notes</TableColumn>
+            <TableColumn key="id">ID</TableColumn>
+            <TableColumn key="Item.name" allowsSorting>Article</TableColumn>
+            <TableColumn key="Item.sku" allowsSorting>SKU</TableColumn>
+            <TableColumn key="type" allowsSorting>Type</TableColumn>
+            <TableColumn key="quantity" allowsSorting>Quantité</TableColumn>
+            <TableColumn key="weight" allowsSorting>Poid</TableColumn>
+            <TableColumn key="date" allowsSorting>Date</TableColumn>
+            <TableColumn key="notes">Notes</TableColumn>
             <TableColumn>Actions</TableColumn>
           </TableHeader>
           <TableBody isLoading={loading} emptyContent={"Aucun mouvement à afficher"}>
-            {filteredList.map((m) => (
+            {filteredList.map((m,i) => (
               <TableRow key={m.id}>
-                <TableCell>{m.id}</TableCell>
+                <TableCell>{++i}</TableCell>
                 <TableCell>{m.Item?.name}</TableCell>
                 <TableCell>{m.Item?.sku}</TableCell>
                 <TableCell>{m.type}</TableCell>

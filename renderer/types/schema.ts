@@ -15,11 +15,13 @@ export interface Item {
   location_id?: number;
   Location: Location; // Include full location details
   current_quantity: number;
+  reorderLevel?: number;
 }
 
 export interface Type {
   id: number;
   name: string;
+  shortName?: string;
   description?: string;
   Items: Item[]; // Items of this type
 }
@@ -58,6 +60,7 @@ export interface User {
 export interface Supplier {
   id: number;
   name: string;
+  shortName?: string;
   origine: string;
   Items: Item[]; // Items provided by this supplier
 }

@@ -132,15 +132,15 @@ export default function TypesPage() {
           showSelectionCheckboxes={false}
         >
           <TableHeader>
-            <TableColumn>ID</TableColumn>
+            <TableColumn>N°</TableColumn>
             <TableColumn>Nom</TableColumn>
             <TableColumn>Description</TableColumn>
             <TableColumn>Actions</TableColumn>
           </TableHeader>
           <TableBody isLoading={loading} emptyContent={"Aucun type à afficher"}>
-            {filteredList.map((t) => (
+            {filteredList.map((t,i) => (
               <TableRow key={t.id}>
-                <TableCell>{t.id}</TableCell>
+                <TableCell>{++i}</TableCell>
                 <TableCell>{t.name}</TableCell>
                 <TableCell>{t.description}</TableCell>
                 <TableCell>

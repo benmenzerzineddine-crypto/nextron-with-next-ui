@@ -1,7 +1,7 @@
 "use client";
 import { useState, useMemo, useEffect } from "react";
 import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Input, Button, Modal, ModalContent, ModalHeader, ModalBody, useDisclosure, Tabs, Tab, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@nextui-org/react";
-import { SearchIcon } from "@/components/icons";
+import { ChevronDownIcon, SearchIcon } from "@/components/icons";
 import ItemForm from "@/components/itemForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
@@ -142,7 +142,7 @@ export default function StockPage() {
       Description: item.description,
       SKU: item.sku,
       Fournisseur: item.Supplier?.name,
-      "Largeur (cm)": item.height,
+      "Laise (cm)": item.height,
       "Grammage (g/m²)": item.grammage,
       Quantité: CalculateQty(item.StockMovements),
       Poid: CalculateWeight(item.StockMovements),
@@ -207,7 +207,7 @@ export default function StockPage() {
           <h1 className="text-2xl font-bold mb-2">Stock</h1>
           <Dropdown>
             <DropdownTrigger>
-              <Button variant="bordered">Export</Button>
+              <Button variant="bordered" endContent={<ChevronDownIcon />}>Export</Button>
             </DropdownTrigger>
             <DropdownMenu aria-label="Static Actions">
               <DropdownItem onPress={() => handleExport("excel")}>Export to Excel</DropdownItem>
@@ -252,13 +252,13 @@ export default function StockPage() {
           showSelectionCheckboxes={false}
         >
           <TableHeader>
-            <TableColumn>ID</TableColumn>
+            <TableColumn>N°</TableColumn>
             <TableColumn>Nom</TableColumn>
             <TableColumn>Type</TableColumn>
             <TableColumn>Description</TableColumn>
             <TableColumn>SKU</TableColumn>
             <TableColumn>Fournisseur</TableColumn>
-            <TableColumn>Largeur (cm)</TableColumn>
+            <TableColumn>Laise (cm)</TableColumn>
             <TableColumn>Grammage (g/m²)</TableColumn>
             <TableColumn>Quantité</TableColumn>
             <TableColumn>Poid</TableColumn>
@@ -266,9 +266,9 @@ export default function StockPage() {
             <TableColumn>Actions</TableColumn>
           </TableHeader>
           <TableBody isLoading={loading} emptyContent={"Aucun article à afficher"}>
-            {filteredList.map((item) => (
+            {filteredList.map((item,index) => (
               <TableRow key={item.id}>
-                <TableCell>{item.id}</TableCell>
+                <TableCell>{++index}</TableCell>
                 <TableCell>{item.name}</TableCell>
                 <TableCell>{item.Type?.name}</TableCell>
                 <TableCell>{item.description}</TableCell>

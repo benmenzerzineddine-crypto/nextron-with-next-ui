@@ -210,7 +210,7 @@ export default function TransactionForm({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <Input label="Hauteur (cm)" type="number" value={String(editRow.height ?? "")} onChange={(e: any) => setEditRow((r) => ({ ...r, height: e.target.value === "" ? undefined : Number(e.target.value) }))} />
+                <Input label="Laise (cm)" type="number" value={String(editRow.height ?? "")} onChange={(e: any) => setEditRow((r) => ({ ...r, height: e.target.value === "" ? undefined : Number(e.target.value) }))} />
                 <Input label="Grammage (g/m²)" type="number" value={String(editRow.grammage ?? "")} onChange={(e: any) => setEditRow((r) => ({ ...r, grammage: e.target.value === "" ? undefined : Number(e.target.value) }))} />
               </div>
 
