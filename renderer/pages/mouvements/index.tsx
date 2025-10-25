@@ -182,10 +182,19 @@ export default function MouvementsPage() {
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       saveAs(blob, "mouvements.csv");
     } else if (format === "excel") {
-      window.ipc?.api?.send!('xslx', dataToExport);
+     handleGenerate();
     }
   };
+ const handleGenerate = async () => {
+    const data = [
+      { Name: 'Alice', Age: 25 },
+      { Name: 'Bob', Age: 30 }
+    ];
 
+    // @ts-ignore
+    const filePath = await window?.api?.invoke!("generate-excel",data);
+    alert(`Excel file created at: ${filePath}`);
+  };
   return (
     <DefaultLayout>
       <Head>

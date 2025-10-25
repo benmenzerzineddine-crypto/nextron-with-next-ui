@@ -1,5 +1,6 @@
 import { ipcMain } from 'electron';
 import { User, Supplier, Location, Type, Item, StockMovement, Transaction, backupDatabase, exportTable, importTable } from './db';
+import JsExcelTemplate from 'js-excel-template';
 
 const getModelIncludes = (modelName: string) => {
     switch (modelName) {
@@ -125,3 +126,32 @@ ipcMain.handle('db:export', async (_, tableName: string) => {
 ipcMain.handle('db:import', async (_, tableName: string) => {
     return await importTable(tableName);
 });
+
+ipcMain.handle('generate-excel', async (event, arg) => {
+  const excelTemplate = await JsExcelTemplate.fromFile(`${__dirname}\\test.xlsx`);
+  excelTemplate.set("name", "John");
+  excelTemplate.set("age", 123);
+  excelTemplate.set("now", new Date());
+  excelTemplate.set("isBoy", true);
+  const students = [
+    { name: "Tommy", age: 12 },
+    { name: "Philips", age: 13 },
+    { name: "Sara", age: 14 },
+  ];
+  for (let i = 1; i <= 5; i++) {
+    if (i <= students.length) {
+      excelTemplate.set(`name${i}`, students[i - 1].name);
+      excelTemplate.set(`age${i}`, students[i - 1].age);
+    } else {
+      excelTemplate.set(`name${i}`, "");
+      excelTemplate.set(`age${i}`, "");
+    }
+  }
+  excelTemplate.set("average", students.reduce((p, c) => p + c.age, 0) / students.length);
+  
+  excelTemplate.set('fields', [{ name: 'Name' }, { name: 'Age' }], { duplicateCellIfArray: true })
+  
+  excelTemplate.set("students", students);
+  await excelTemplate.saveAs("demo/out.xlsx");
+  
+})
