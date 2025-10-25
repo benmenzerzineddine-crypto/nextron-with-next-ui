@@ -128,7 +128,7 @@ ipcMain.handle('db:import', async (_, tableName: string) => {
 });
 
 ipcMain.handle('generate-excel', async (event, arg) => {
-  const excelTemplate = await JsExcelTemplate.fromFile(`${__dirname}\\test.xlsx`);
+  const excelTemplate = await JsExcelTemplate.fromFile(`${__dirname}\\..\\demo\\test.xlsx`);
   excelTemplate.set("name", "John");
   excelTemplate.set("age", 123);
   excelTemplate.set("now", new Date());
