@@ -24,7 +24,7 @@ import {
   DropdownItem,
   SortDescriptor
 } from "@nextui-org/react";
-import { SearchIcon } from "@/components/icons";
+import { ChevronDownIcon, SearchIcon } from "@/components/icons";
 import MovementForm from "@/components/movementForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
@@ -34,8 +34,6 @@ import { DateValue } from "@react-types/datepicker";
 import { getLocalTimeZone } from "@internationalized/date";
 import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
-import JsExcelTemplate from "js-excel-template";
-import { ipcMain, ipcRenderer } from "electron";
 
 const useDbMovements = () => {
   const [movements, setMovements] = useState<StockMovement[]>([]);
@@ -161,9 +159,9 @@ export default function MouvementsPage() {
   };
 
   const handleExport = (format: "excel" | "csv" | "json") => {
-    const dataToExport = filteredList.map(m => ({
-      ID: m.id,
-      Article: m.Item?.name,
+    const dataToExport = filteredList.map((m,i) => ({
+      ID: ++i,
+      Article: m.Item?.name.split(' ')[0],
       SKU: m.Item?.sku,
       Type: m.type,
       Quantité: m.quantity,
@@ -171,7 +169,7 @@ export default function MouvementsPage() {
       Grammage: m.Item?.grammage,
       Poid: m.weight,
       Date: new Date(m.date).toLocaleString(),
-      Notes: m.notes ?? "",
+      Notes: m.notes,
     }));
 
     if (format === "json") {
@@ -184,13 +182,79 @@ export default function MouvementsPage() {
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       saveAs(blob, "mouvements.csv");
     } else if (format === "excel") {
-     handleGenerate(dataToExport);
+      const args = {file:"Mouvements",  data:dataToExport};
+     handleGenerate(args);
     }
   };
+
+  const handleImport = (format: "excel" | "csv" | "json") => {
+    // Import Data From File
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept =
+      format === "excel"
+        ? ".xlsx, .xls"
+        : format === "csv"
+        ? ".csv"
+        : ".json";
+    input.onchange = async (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      if (format === "excel" || format === "csv") {
+        reader.readAsArrayBuffer(file);
+      } else {
+        reader.readAsText(file);
+      }
+      reader.onload = async (e) => {
+        const data = e.target?.result;
+        if (!data) return;
+        let importedData: any[] = [];
+        if (format === "json") {
+          importedData = JSON.parse(data as string);
+        } else if (format === "csv" || format === "excel") {
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheetName = workbook.SheetNames[0];
+          importedData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        }
+
+        for (const row of importedData) {
+          const item = items.find(
+            (i) => i.sku === row.SKU || i.name === row.Article
+          );
+          if (!item) {
+            console.warn(`Item not found for SKU: ${row.SKU || row.Article}. Skipping movement.`);
+            continue;
+          }
+
+          const user = users.find((u) => u.name === row.User); // Assuming User column exists in import
+          
+          const movementPayload = {
+            item_id: item.id,
+            type: row.Type,
+            quantity: row.Quantité,
+            weight: row.Poid,
+            date: row.Date ? new Date(row.Date).toISOString() : new Date().toISOString(),
+            user_id: user?.id,
+            notes: row.Notes,
+          };
+          await dbApi.create<StockMovement>("stockmovement", movementPayload);
+        }
+        await refresh();
+      }
+  }
+      input.click();
+  }
  const handleGenerate = async (data:any) => {
     // @ts-ignore
-    const filePath = await window?.api?.invoke!("generate-excel",data);
-    alert(`Excel file created at: ${filePath}`);
+    const result = await window?.api?.invoke!("generate-excel", data);
+    if (result.success) {
+      alert(`Excel file created at: ${result.path}`);
+    } else {
+      if (result.error !== 'Save dialog canceled') {
+        alert(`Error creating Excel file: ${result.error}`);
+      }
+    }
   };
   return (
     <DefaultLayout>
@@ -201,9 +265,22 @@ export default function MouvementsPage() {
       <div className="flex flex-col gap-4">
         <section className="flex justify-between gap-4 items-end">
           <h1 className="text-2xl font-bold mb-2">Mouvements de stock</h1>
-          <Dropdown>
+          <div className="flex gap-4">
+            <Dropdown>
             <DropdownTrigger>
-              <Button variant="bordered">Export</Button>
+              <Button endContent={<ChevronDownIcon />
+              } variant="bordered">Import</Button>
+            </DropdownTrigger>
+            <DropdownMenu aria-label="Static Actions">
+              <DropdownItem onPress={() => handleImport("excel")}>Import to Excel</DropdownItem>
+              <DropdownItem onPress={() => handleImport("csv")}>Import to CSV</DropdownItem>
+              <DropdownItem onPress={() => handleImport("json")}>Import to JSON</DropdownItem>
+            </DropdownMenu>
+          </Dropdown>
+            <Dropdown>
+            <DropdownTrigger>
+              <Button endContent={<ChevronDownIcon />
+              } variant="bordered">Export</Button>
             </DropdownTrigger>
             <DropdownMenu aria-label="Static Actions">
               <DropdownItem onPress={() => handleExport("excel")}>Export to Excel</DropdownItem>
@@ -211,6 +288,7 @@ export default function MouvementsPage() {
               <DropdownItem onPress={() => handleExport("json")}>Export to JSON</DropdownItem>
             </DropdownMenu>
           </Dropdown>
+          </div>
         </section>
         <Tabs
           fullWidth

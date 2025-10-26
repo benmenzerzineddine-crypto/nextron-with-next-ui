@@ -1,4 +1,4 @@
-import { ipcMain } from "electron";
+import { ipcMain, dialog } from "electron";
 import {
   User,
   Supplier,
@@ -143,23 +143,25 @@ ipcMain.handle("db:import", async (_, tableName: string) => {
 });
 
 ipcMain.handle("generate-excel", async (event, arg) => {
-  const excelTemplate = await JsExcelTemplate.fromFile(
-    `${__dirname}\\..\\demo\\test.xlsx`
-  );
-  const item = arg;
-  for (let i = 0; i < item.length; i++) {
-    excelTemplate.set(`ID${i}`, item[i].ID);
-    excelTemplate.set(`Article${i}`, item[i].Article);
-    excelTemplate.set(`Type${i}`, item[i].Type);
-    excelTemplate.set(`Laise${i}`, item[i].Type);
-    excelTemplate.set(`Grammage${i}`, item[i].Grammage);
-    excelTemplate.set(`SKU${i}`, item[i].SKU);
-    excelTemplate.set(`Quantité${i}`, item[i].Quantité);
-    excelTemplate.set(`Poid${i}`, item[i].Poid);
-    excelTemplate.set(`Date${i}`, item[i].Date);
-    excelTemplate.set(`Notes${i}`, item[i].Notes);
-  }
+  const Xlsx_Template = {Mouvements:"Mouvements", Items:"Items", Types:"Types", Locations:"Emplacements", Suppliers:"Fournisseurs"};
+  try {
+    const { filePath } = await dialog.showSaveDialog({
+      title: "Save Excel File",
+      defaultPath: `${Xlsx_Template[arg.file]}.xlsx`,
+      filters: [{ name: "Excel Files", extensions: ["xlsx"] }],
+    });
 
-  excelTemplate.set("item", item);
-  await excelTemplate.saveAs("demo/out.xlsx");
+    if (filePath) {
+      const excelTemplate = await JsExcelTemplate.fromFile(
+        `demo/${Xlsx_Template[arg.file]}.xlsx`
+      );
+      const items = arg.data;
+      excelTemplate.set("item", items)
+      await excelTemplate.saveAs(filePath);
+      return { success: true, path: filePath };
+    }
+    return { success: false, error: "Save dialog canceled" };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 });
