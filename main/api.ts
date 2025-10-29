@@ -143,7 +143,7 @@ ipcMain.handle("db:import", async (_, tableName: string) => {
 });
 
 ipcMain.handle("generate-excel", async (event, arg) => {
-  const Xlsx_Template = {Mouvements:"Mouvements", Items:"Items", Types:"Types", Locations:"Emplacements", Suppliers:"Fournisseurs"};
+  const Xlsx_Template = {Mouvements:"Mouvements", Items:"Articles", Types:"Types", Locations:"Emplacements", Suppliers:"Fournisseurs"};
   try {
     const { filePath } = await dialog.showSaveDialog({
       title: "Save Excel File",

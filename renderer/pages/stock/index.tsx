@@ -1,11 +1,44 @@
 "use client";
 import { useState, useMemo, useEffect } from "react";
-import { Table, TableHeader, TableColumn, TableBody, TableRow, TableCell, Input, Button, Modal, ModalContent, ModalHeader, ModalBody, useDisclosure, Tabs, Tab, Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@nextui-org/react";
+import {
+  Table,
+  TableHeader,
+  TableColumn,
+  TableBody,
+  TableRow,
+  TableCell,
+  Input,
+  Button,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  useDisclosure,
+  Tabs,
+  Tab,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  Selection,
+  Card,
+  CardBody,
+  Accordion,
+  AccordionItem,
+  Progress,
+  ModalFooter,
+} from "@nextui-org/react";
 import { ChevronDownIcon, SearchIcon } from "@/components/icons";
 import ItemForm from "@/components/itemForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
-import type { Item, Type, Supplier, Location, StockMovement } from "@/types/schema";
+import type {
+  Item,
+  Type,
+  Supplier,
+  Location,
+  StockMovement,
+} from "@/types/schema";
 import * as dbApi from "@/utils/api";
 import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
@@ -22,7 +55,9 @@ const useDbItems = () => {
     else if ("error" in res) setError(res.error);
     setLoading(false);
   };
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+  }, []);
   return { items, loading, error, refresh };
 };
 
@@ -32,7 +67,9 @@ const useDbTypes = () => {
     const res = await dbApi.getAll<Type>("type");
     if (res.success) setTypes(res.data);
   };
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+  }, []);
   return { types, refresh };
 };
 
@@ -42,7 +79,9 @@ const useDbSuppliers = () => {
     const res = await dbApi.getAll<Supplier>("supplier");
     if (res.success) setSuppliers(res.data);
   };
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+  }, []);
   return { suppliers, refresh };
 };
 
@@ -52,14 +91,18 @@ const useDbLocations = () => {
     const res = await dbApi.getAll<Location>("location");
     if (res.success) setLocations(res.data);
   };
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    refresh();
+  }, []);
   return { locations, refresh };
 };
 
 export default function StockPage() {
   const [type, setType] = useState("TOUS");
   const [search, setSearch] = useState("");
-  const [selectionMode, setSelectionMode] = useState<"none" | "single" | "multiple">("single");
+  const [selectionMode, setSelectionMode] = useState<
+    "none" | "single" | "multiple"
+  >("single");
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const { items, loading, error, refresh } = useDbItems();
   const { types } = useDbTypes();
@@ -72,6 +115,15 @@ export default function StockPage() {
     onOpen: onDeleteConfirmOpen,
     onOpenChange: onDeleteConfirmOpenChange,
   } = useDisclosure();
+  const {
+    isOpen: isInfoModalOpen,
+    onOpen: onInfoModalOpen,
+    onOpenChange: onInfoModalOpenChange,
+  } = useDisclosure();
+
+  const [infoData, setInfoData] = useState<any[]>([]);
+
+  const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set([]));
 
   const filteredList = useMemo(() => {
     let filtered = items;
@@ -87,7 +139,7 @@ export default function StockPage() {
           (item.sku?.toLocaleLowerCase() || "").includes(s)
       );
     }
-    console.log(filtered)
+    console.log(filtered);
     return filtered;
   }, [type, search, items]);
 
@@ -135,14 +187,14 @@ export default function StockPage() {
   };
 
   const handleExport = (format: "excel" | "csv" | "json") => {
-    const dataToExport = filteredList.map(item => ({
-      ID: item.id,
+    const dataToExport = filteredList.map((item, index) => ({
+      ID: ++index,
       Nom: item.name,
       Type: item.Type?.name,
       Description: item.description,
       SKU: item.sku,
       Fournisseur: item.Supplier?.name,
-      "Laise": item.height,
+      Laise: item.height,
       Grammage: item.grammage,
       Quantité: CalculateQty(item.StockMovements),
       Poid: CalculateWeight(item.StockMovements),
@@ -159,43 +211,166 @@ export default function StockPage() {
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       saveAs(blob, "stock.csv");
     } else if (format === "excel") {
-      const header = Object.keys(dataToExport[0] || {});
-      const ws = XLSX.utils.aoa_to_sheet([header]);
-
-      // Style the header
-      const headerStyle = {
-        fill: { fgColor: { rgb: "C0C0C0" } }, // Silver background
-        font: { bold: true },
-        alignment: { horizontal: "center", vertical: "center" },
-      };
-
-      header.forEach((h, i) => {
-        const cellRef = XLSX.utils.encode_cell({ r: 0, c: i });
-        if (ws[cellRef]) {
-          ws[cellRef].s = headerStyle;
-        }
-      });
-
-      XLSX.utils.sheet_add_json(ws, dataToExport, { origin: "A2", skipHeader: true });
-
-      // Set column widths
-      const columnWidths = header.map((key, i) => {
-        const maxLength = Math.max(
-          key.length,
-          ...dataToExport.map(row => (row[key] ? row[key].toString().length : 0))
-        );
-        return { wch: maxLength + 2 }; // +2 for a little extra padding
-      });
-      ws["!cols"] = columnWidths;
-
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Stock");
-      const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-      const blob = new Blob([excelBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8" });
-      saveAs(blob, "stock.xlsx");
+      const args = { file: "Items", data: dataToExport };
+      handleGenerate(args);
     }
   };
 
+  const handleGenerate = async (data: any) => {
+    // @ts-ignore
+    const result = await window?.api?.invoke!("generate-excel", data);
+    if (result.success) {
+      alert(`Excel file created at: ${result.path}`);
+    } else {
+      if (result.error !== "Save dialog canceled") {
+        alert(`Error creating Excel file: ${result.error}`);
+      }
+    }
+  };
+
+  const handleImport = (format: "excel" | "csv" | "json") => {
+    // Import Data From File
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept =
+      format === "excel" ? ".xlsx, .xls" : format === "csv" ? ".csv" : ".json";
+    input.onchange = async (event) => {
+      const file = (event.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      if (format === "excel" || format === "csv") {
+        reader.readAsArrayBuffer(file);
+      } else {
+        reader.readAsText(file);
+      }
+      reader.onload = async (e) => {
+        const data = e.target?.result;
+        if (!data) return;
+        let importedData: any[] = [];
+        if (format === "json") {
+          importedData = JSON.parse(data as string);
+        } else if (format === "csv" || format === "excel") {
+          const workbook = XLSX.read(data, { type: "array" });
+          const sheetName = workbook.SheetNames[0];
+          importedData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        }
+
+        for (const row of importedData) {
+          const type = types.find((t) => t.name === row.Type);
+          const supplier = suppliers.find((s) => s.name === row.Fournisseur);
+          const location = locations.find((l) => l.name === row.Emplacement);
+
+          const itemPayload = {
+            name: row.Nom,
+            type_id: type?.id,
+            description: row.Description,
+            sku: row.SKU,
+            supplier_id: supplier?.id,
+            height: row.Laise,
+            grammage: row.Grammage,
+            location_id: location?.id,
+          };
+
+          await dbApi.create<Item>("item", itemPayload);
+        }
+        await refresh();
+      };
+    };
+    input.click();
+  };
+  useEffect(() => {
+    // convert map into array
+    const SelectedItems = Array.from(selectedKeys);
+    if (SelectedItems.length > 1) {
+    }
+  }, [selectedKeys]);
+
+  const selectedItems = useMemo(() => {
+    if (selectedKeys === "all") {
+      return items;
+    }
+    const selectedIds = new Set(
+      Array.from(selectedKeys).map((key) => Number(key))
+    );
+    return items.filter((item) => selectedIds.has(item.id));
+  }, [selectedKeys, items]);
+
+  const handleBulkDelete = async () => {
+    const deletePromises = selectedItems.map((item) =>
+      dbApi.remove("item", item.id)
+    );
+    const results = await Promise.all(deletePromises);
+    const errors = results.filter((res) => !res.success);
+    if (errors.length > 0) {
+      alert(`Erreur lors de la suppression de ${errors.length} article(s).`);
+    }
+    await refresh();
+    setSelectedKeys(new Set([]));
+  };
+
+  const handleEditSelected = () => {
+    if (selectedItems.length === 1) {
+      openEditModal(selectedItems[0]);
+    }
+  };
+  const AddValues = (Items: Item[]) => {
+    const grouped: { [key: string]: Item[] } = {};
+    Items.forEach((item) => {
+      const key = `${item.name}-${item.height}-${item.grammage}`;
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(item);
+    });
+
+    return Object.values(grouped).map((group) => {
+      const firstItem = group[0];
+      const totalQuantity = group.reduce(
+        (sum, item) => sum + CalculateQty(item.StockMovements),
+        0
+      );
+      const totalWeight = group.reduce(
+        (sum, item) => sum + CalculateWeight(item.StockMovements),
+        0
+      );
+      return {
+        ...firstItem,
+        totalQuantity,
+        totalWeight,
+        itemsInGroup: group.length,
+      };
+    });
+  };
+
+  const GroupedByType = (Items: Item[]) => {
+    const grouped: { [key: string]: Item[] } = {};
+    Items.forEach((item) => {
+      const key = item.Type?.name || "Unknown";
+      if (!grouped[key]) {
+        grouped[key] = [];
+      }
+      grouped[key].push(item);
+    });
+
+    return Object.entries(grouped).map(([typeName, items]) => ({
+      typeName,
+      items,
+    }));
+  };
+
+  const getInformation = async (IDs: number[]) => {
+    const Items = IDs.map((id) => {
+      const item = items.find((item) => item.id === id);
+      if (item) {
+        return item;
+      }
+    }).filter(Boolean); // Filter out any undefined items
+    const addValues = AddValues(Items as Item[]); // This function seems to be grouping items by name, height, and grammage
+    const groupedByType = GroupedByType(addValues as Item[]);
+    console.log(groupedByType);
+    setInfoData(groupedByType);
+    onInfoModalOpen();
+  };
   return (
     <DefaultLayout>
       <Head>
@@ -205,17 +380,44 @@ export default function StockPage() {
       <div className="flex flex-col gap-4">
         <section className="flex justify-between gap-4 items-end">
           <h1 className="text-2xl font-bold mb-2">Stock</h1>
-          <Dropdown>
-            <DropdownTrigger>
-              <Button variant="bordered" endContent={<ChevronDownIcon />}>Export</Button>
-            </DropdownTrigger>
-            <DropdownMenu aria-label="Static Actions">
-              <DropdownItem onPress={() => handleExport("excel")}>Export to Excel</DropdownItem>
-              <DropdownItem onPress={() => handleExport("csv")}>Export to CSV</DropdownItem>
-              <DropdownItem onPress={() => handleExport("json")}>Export to JSON</DropdownItem>
-            </DropdownMenu>
-          </Dropdown>
-
+          <div className="flex gap-4">
+            <Dropdown>
+              <DropdownTrigger>
+                <Button endContent={<ChevronDownIcon />} variant="bordered">
+                  Import
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu aria-label="Static Actions">
+                <DropdownItem onPress={() => handleImport("excel")}>
+                  Import to Excel
+                </DropdownItem>
+                <DropdownItem onPress={() => handleImport("csv")}>
+                  Import to CSV
+                </DropdownItem>
+                <DropdownItem onPress={() => handleImport("json")}>
+                  Import to JSON
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+            <Dropdown>
+              <DropdownTrigger>
+                <Button endContent={<ChevronDownIcon />} variant="bordered">
+                  Export
+                </Button>
+              </DropdownTrigger>
+              <DropdownMenu aria-label="Static Actions">
+                <DropdownItem onPress={() => handleExport("excel")}>
+                  Export to Excel
+                </DropdownItem>
+                <DropdownItem onPress={() => handleExport("csv")}>
+                  Export to CSV
+                </DropdownItem>
+                <DropdownItem onPress={() => handleExport("json")}>
+                  Export to JSON
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
+          </div>
         </section>
         <Tabs
           fullWidth
@@ -234,7 +436,9 @@ export default function StockPage() {
           <Input
             labelPlacement="outside"
             placeholder="Recherche (nom, description, SKU)"
-            startContent={<SearchIcon className="text-2xl text-default-400 pointer-events-none shrink-0" />}
+            startContent={
+              <SearchIcon className="text-2xl text-default-400 pointer-events-none shrink-0" />
+            }
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -249,7 +453,9 @@ export default function StockPage() {
         <Table
           aria-label="Liste des articles (bobines)"
           selectionMode={selectionMode}
-          showSelectionCheckboxes={false}
+          selectedKeys={selectedKeys}
+          onSelectionChange={setSelectedKeys}
+          selectionBehavior="replace"
         >
           <TableHeader>
             <TableColumn>N°</TableColumn>
@@ -265,8 +471,11 @@ export default function StockPage() {
             <TableColumn>Emplacement</TableColumn>
             <TableColumn>Actions</TableColumn>
           </TableHeader>
-          <TableBody isLoading={loading} emptyContent={"Aucun article à afficher"}>
-            {filteredList.map((item,index) => (
+          <TableBody
+            isLoading={loading}
+            emptyContent={"Aucun article à afficher"}
+          >
+            {filteredList.map((item, index) => (
               <TableRow key={item.id}>
                 <TableCell>{++index}</TableCell>
                 <TableCell>{item.name}</TableCell>
@@ -301,6 +510,7 @@ export default function StockPage() {
             ))}
           </TableBody>
         </Table>
+
         <Modal size="5xl" isOpen={isOpen} onOpenChange={onOpenChange}>
           <ModalContent>
             {(onClose) => (
@@ -317,22 +527,35 @@ export default function StockPage() {
                     onCancel={() => onClose()}
                     onSubmit={async (payload) => {
                       if (editingItem) {
-                        const res = await dbApi.update<Item>("item", editingItem.id, payload);
-                        if (!res.success && "error" in res) alert("Erreur: " + res.error);
+                        const res = await dbApi.update<Item>(
+                          "item",
+                          editingItem.id,
+                          payload
+                        );
+                        if (!res.success && "error" in res)
+                          alert("Erreur: " + res.error);
                         else await refresh();
                       } else {
                         const res = await dbApi.create<Item>("item", payload);
                         if (res.success) {
-                          if (payload.current_quantity && payload.current_quantity > 0) {
+                          if (
+                            payload.current_quantity &&
+                            payload.current_quantity > 0
+                          ) {
                             const mouvementPayload: any = {
                               item_id: res.data.id,
                               type: "IN",
                               quantity: payload.current_quantity,
-                              weight: payload.currentWeight ? payload.currentWeight : 0,
+                              weight: payload.currentWeight
+                                ? payload.currentWeight
+                                : 0,
                               date: new Date().toISOString(),
                               notes: "Initial Value",
                             };
-                            await dbApi.create("stockmovement", mouvementPayload);
+                            await dbApi.create(
+                              "stockmovement",
+                              mouvementPayload
+                            );
                           }
                           await refresh();
                         } else if ("error" in res) {
@@ -369,6 +592,111 @@ export default function StockPage() {
                     </Button>
                   </div>
                 </ModalBody>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+        {selectedItems.length > 1 && (
+          <Card className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 w-auto">
+            <CardBody>
+              <div className="flex items-center gap-4">
+                <p className="text-sm">
+                  {selectedItems.length} article(s) séléctionné(s)
+                </p>
+                {selectedItems.length === 1 && (
+                  <Button
+                    color="primary"
+                    size="sm"
+                    onPress={handleEditSelected}
+                  >
+                    Modifier
+                  </Button>
+                )}
+                <Button
+                  color="success"
+                  size="sm"
+                  onPress={() =>
+                    getInformation(
+                      Array.from(selectedKeys).map((key) => Number(key))
+                    )
+                  }
+                >
+                  Info
+                </Button>
+                <Button color="danger" size="sm" onPress={handleBulkDelete}>
+                  Supprimer la séléction
+                </Button>
+              </div>
+            </CardBody>
+          </Card>
+        )}
+        <Modal isOpen={isInfoModalOpen} onOpenChange={onInfoModalOpenChange} className="h-dvh absolute right-0">
+          <ModalContent className="rounded-none m-0 p-0 sm:mx-0">
+            {(onClose) => (
+              <>
+                <ModalHeader>Information sur la séléction</ModalHeader>
+                <ModalBody>
+                  <Accordion
+                    variant="splitted"
+                    selectionMode="multiple"
+                    defaultExpandedKeys={["0"]}
+                  >
+                    {infoData.map((group, index) => (
+                      <AccordionItem
+                        key={index}
+                        aria-label={group.typeName}
+                        title={group.typeName}
+                      >
+                        <div className="flex flex-col gap-4">
+                          <Progress
+                            className="max-w-md"
+                            color="primary"
+                            label="Nombre d'Articles"
+                            maxValue={100}
+                            showValueLabel={true}
+                            valueLabel={group.items.length}
+                            size="sm"
+                            value={100}
+                          />
+                          <Progress
+                            className="max-w-md"
+                            color="success"
+                            label="Nombre de Bobines"
+                            maxValue={100}
+                            showValueLabel={true}
+                            valueLabel={group.items.reduce(
+                              (acc: number, item) => acc + item.totalQuantity,
+                              0
+                            )}
+                            size="sm"
+                            value={100}
+                          />
+                          <Progress
+                            className="max-w-md"
+                            color="warning"
+                            label="Poids Total (kg)"
+                            maxValue={100}
+                            showValueLabel={true}
+                            valueLabel={group.items.reduce(
+                              (acc: number, item) => acc + item.totalWeight,
+                              0
+                            )}
+                            size="sm"
+                            value={100}
+                          />
+                        </div>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
+                 
+                </ModalBody>
+                <ModalFooter>
+                   <div className="flex justify-end gap-2 mt-4">
+                    <Button color="primary" onPress={onClose}>
+                      Fermer
+                    </Button>
+                  </div>
+                </ModalFooter>
               </>
             )}
           </ModalContent>
