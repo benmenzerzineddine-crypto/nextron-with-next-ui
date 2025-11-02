@@ -6,7 +6,7 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <div className="relative flex h-screen">
+    <div className="relative flex h-screen" style={{userSelect:"none"}}>
       <Sidebar isExpanded={isExpanded} setIsExpanded={setIsExpanded} />
       <main
         className={clsx("flex-grow p-6 transition-all duration-300")}

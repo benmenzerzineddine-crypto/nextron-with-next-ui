@@ -371,49 +371,61 @@ export default function StockPage() {
     setInfoData(groupedByType);
     onInfoModalOpen();
   };
+
+  const SelectAll = (event: KeyboardEvent) => {
+    if (event.ctrlKey && event.key.toLocaleLowerCase() === "a") {
+      event.preventDefault();
+      const allKeys = new Set(filteredList.map((m) => m.id.toString()));
+      setSelectedKeys(allKeys);
+    }
+  };
+
   return (
     <DefaultLayout>
       <Head>
         <title>Stock - Nextron (with-next-ui)</title>
       </Head>
 
-      <div className="flex flex-col gap-4">
+      <div
+        className="flex flex-col gap-4"
+        onKeyDown={(event) => SelectAll(event.nativeEvent)}
+      >
         <section className="flex justify-between gap-4 items-end">
           <h1 className="text-2xl font-bold mb-2">Stock</h1>
           <div className="flex gap-4">
             <Dropdown>
               <DropdownTrigger>
                 <Button endContent={<ChevronDownIcon />} variant="bordered">
-                  Import
+                  Importer
                 </Button>
               </DropdownTrigger>
               <DropdownMenu aria-label="Static Actions">
                 <DropdownItem onPress={() => handleImport("excel")}>
-                  Import to Excel
+                  Importer vers Excel
                 </DropdownItem>
                 <DropdownItem onPress={() => handleImport("csv")}>
-                  Import to CSV
+                  Importer vers CSV
                 </DropdownItem>
                 <DropdownItem onPress={() => handleImport("json")}>
-                  Import to JSON
+                  Importer vers JSON
                 </DropdownItem>
               </DropdownMenu>
             </Dropdown>
             <Dropdown>
               <DropdownTrigger>
                 <Button endContent={<ChevronDownIcon />} variant="bordered">
-                  Export
+                  Exporter
                 </Button>
               </DropdownTrigger>
               <DropdownMenu aria-label="Static Actions">
                 <DropdownItem onPress={() => handleExport("excel")}>
-                  Export to Excel
+                  Exporter vers Excel
                 </DropdownItem>
                 <DropdownItem onPress={() => handleExport("csv")}>
-                  Export to CSV
+                  Exporter vers CSV
                 </DropdownItem>
                 <DropdownItem onPress={() => handleExport("json")}>
-                  Export to JSON
+                  Exporter vers JSON
                 </DropdownItem>
               </DropdownMenu>
             </Dropdown>
@@ -495,14 +507,14 @@ export default function StockPage() {
                       size="sm"
                       onPress={() => openEditModal(item)}
                     >
-                      Edit
+                      Modifier
                     </Button>
                     <Button
                       color="danger"
                       size="sm"
                       onPress={() => openDeleteConfirm(item)}
                     >
-                      Delete
+                      Supprimer
                     </Button>
                   </div>
                 </TableCell>
@@ -630,7 +642,11 @@ export default function StockPage() {
             </CardBody>
           </Card>
         )}
-        <Modal isOpen={isInfoModalOpen} onOpenChange={onInfoModalOpenChange} className="h-dvh absolute right-0">
+        <Modal
+          isOpen={isInfoModalOpen}
+          onOpenChange={onInfoModalOpenChange}
+          className="h-dvh absolute right-0"
+        >
           <ModalContent className="rounded-none m-0 p-0 sm:mx-0">
             {(onClose) => (
               <>
@@ -688,10 +704,9 @@ export default function StockPage() {
                       </AccordionItem>
                     ))}
                   </Accordion>
-                 
                 </ModalBody>
                 <ModalFooter>
-                   <div className="flex justify-end gap-2 mt-4">
+                  <div className="flex justify-end gap-2 mt-4">
                     <Button color="primary" onPress={onClose}>
                       Fermer
                     </Button>
