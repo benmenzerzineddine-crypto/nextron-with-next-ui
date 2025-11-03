@@ -42,6 +42,8 @@ import type {
 import * as dbApi from "@/utils/api";
 import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
+import StockDoc from "@/components/StockDoc";
+import { PDFViewer } from "@react-pdf/renderer";
 
 const useDbItems = () => {
   const [items, setItems] = useState<Item[]>([]);
@@ -119,6 +121,12 @@ export default function StockPage() {
     isOpen: isInfoModalOpen,
     onOpen: onInfoModalOpen,
     onOpenChange: onInfoModalOpenChange,
+  } = useDisclosure();
+
+  const {
+    isOpen: isPrintModalOpen,
+    onOpen: onPrintModalOpen,
+    onOpenChange: onPrintModalOpenChange,
   } = useDisclosure();
 
   const [infoData, setInfoData] = useState<any[]>([]);
@@ -635,6 +643,13 @@ export default function StockPage() {
                 >
                   Info
                 </Button>
+                <Button
+                  color="primary"
+                  size="sm"
+                  onPress={onPrintModalOpen}
+                >
+                  Imprimer
+                </Button>
                 <Button color="danger" size="sm" onPress={handleBulkDelete}>
                   Supprimer la séléction
                 </Button>
@@ -712,6 +727,29 @@ export default function StockPage() {
                     </Button>
                   </div>
                 </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+        <Modal
+          isOpen={isPrintModalOpen}
+          size="full"
+          onOpenChange={onPrintModalOpenChange}
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1">
+                  Stock Document
+                </ModalHeader>
+                <ModalBody>
+                    <PDFViewer>
+                  <StockDoc items={selectedItems}/>
+
+                    </PDFViewer>
+
+                </ModalBody>
+                
               </>
             )}
           </ModalContent>
