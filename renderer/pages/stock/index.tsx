@@ -740,10 +740,10 @@ export default function StockPage() {
             {(onClose) => (
               <>
                 <ModalHeader className="flex flex-col gap-1">
-                  Stock Document
+                  Fiche de Stock - Matiere Premiere
                 </ModalHeader>
-                <ModalBody>
-                    <PDFViewer>
+                <ModalBody className="h-dvh">
+                    <PDFViewer height={"100%"}>
                   <StockDoc items={selectedItems}/>
 
                     </PDFViewer>
