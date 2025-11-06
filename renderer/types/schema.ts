@@ -15,6 +15,7 @@ export interface Item {
   location_id?: number;
   Location: Location; // Include full location details
   current_quantity: number;
+  current_weight?: number;
   reorderLevel?: number;
 }
 

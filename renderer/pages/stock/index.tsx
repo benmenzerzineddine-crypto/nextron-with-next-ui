@@ -388,6 +388,11 @@ export default function StockPage() {
     }
   };
 
+  const ListForPrint = () => {
+    const table = selectedItems.map((item) => ({...item,current_quantity:CalculateQty(item.StockMovements),current_weight:CalculateWeight(item.StockMovements)}));
+    return table;
+  };
+
   return (
     <DefaultLayout>
       <Head>
@@ -744,7 +749,7 @@ export default function StockPage() {
                 </ModalHeader>
                 <ModalBody className="h-dvh">
                     <PDFViewer height={"100%"}>
-                  <StockDoc items={selectedItems}/>
+                  <StockDoc items={ListForPrint()}/>
 
                     </PDFViewer>
 

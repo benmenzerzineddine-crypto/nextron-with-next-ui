@@ -51,7 +51,7 @@ export default function StockDoc({ items }: { items: Item[] }) {
               <TD>Laise (cm)</TD>
               <TD>Grammage (g/m²)</TD>
               <TD>Quantité</TD>
-              <TD>Emplacement</TD>
+              <TD>Poid</TD>
             </TH>
             {items.map((item) => (
               <TR key={item.id}>
@@ -60,7 +60,7 @@ export default function StockDoc({ items }: { items: Item[] }) {
                 <TD>{item.height || ""}</TD>
                 <TD>{item.grammage || ""}</TD>
                 <TD>{item.current_quantity || 0}</TD>
-                <TD>{item.Location?.name || ""}</TD>
+                <TD>{item.current_weight || ""}</TD>
               </TR>
             ))}
           </Table>
