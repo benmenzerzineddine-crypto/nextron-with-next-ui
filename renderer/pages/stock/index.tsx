@@ -197,10 +197,10 @@ export default function StockPage() {
   const handleExport = (format: "excel" | "csv" | "json") => {
     const dataToExport = filteredList.map((item, index) => ({
       ID: ++index,
-      Nom: item.name,
+      // Nom: item.name,
       Type: item.Type?.name,
       Description: item.description,
-      SKU: item.sku,
+      // SKU: item.sku,
       Fournisseur: item.Supplier?.name,
       Laise: item.height,
       Grammage: item.grammage,
@@ -264,18 +264,25 @@ export default function StockPage() {
         }
 
         for (const row of importedData) {
-          const type = types.find((t) => t.name === row.Type);
-          const supplier = suppliers.find((s) => s.name === row.Fournisseur);
-          const location = locations.find((l) => l.name === row.Emplacement);
-
+          const type = await types.find((t) => t.name! === row.Type!);
+          const supplier = await suppliers.find((s) => s.name! === row.Fournisseur!);
+          const location = await locations.find((l) => l.name! === row.Emplacement!);
+          if (!type || !supplier || !location) {
+            console.warn(
+              `Skipping row due to missing type, supplier, or location: ${JSON.stringify(row)}`
+            );
+            continue;
+          }
+          const SKU = `${supplier?.shortName||""}-${type?.shortName||""}-${row.Laise!|| ''}-${row.Grammage!|| ''}`;
+          const Name = `${row.Fournisseur!} ${row.Type!} ${row.Laise!|| ''} ${row.Grammage!|| ''}`;
           const itemPayload = {
-            name: row.Nom,
+            name: Name,
             type_id: type?.id,
-            description: row.Description,
-            sku: row.SKU,
+            description: row.Description!,
+            sku: SKU,
             supplier_id: supplier?.id,
-            height: row.Laise,
-            grammage: row.Grammage,
+            height: row.Laise!,
+            grammage: row.Grammage!,
             location_id: location?.id,
           };
 

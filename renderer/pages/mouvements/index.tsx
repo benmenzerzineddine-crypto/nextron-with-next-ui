@@ -41,6 +41,8 @@ import { DateValue } from "@react-types/datepicker";
 import { getLocalTimeZone } from "@internationalized/date";
 import { saveAs } from "file-saver";
 import * as XLSX from "xlsx";
+import { PDFViewer } from "@react-pdf/renderer";
+import MouvementDoc from "@/components/MouvementDoc";
 
 const useDbMovements = () => {
   const [movements, setMovements] = useState<StockMovement[]>([]);
@@ -125,6 +127,13 @@ export default function MouvementsPage() {
     onOpen: onInfoModalOpen,
     onOpenChange: onInfoModalOpenChange,
   } = useDisclosure();
+
+  const {
+    isOpen: isPrintModalOpen,
+    onOpen: onPrintModalOpen,
+    onOpenChange: onPrintModalOpenChange,
+  } = useDisclosure();
+
   const [infoData, setInfoData] = useState<any[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<Selection>(new Set([]));
   const [sortDescriptor, setSortDescriptor] = useState<SortDescriptor>({
@@ -406,12 +415,11 @@ export default function MouvementsPage() {
         <title>Mouvements de stock - Nextron (with-next-ui)</title>
       </Head>
 
-      <div className="flex flex-col gap-4" 
->
+      <div className="flex flex-col gap-4">
         <section className="flex justify-between gap-4 items-end">
           <h1 className="text-2xl font-bold mb-2">Mouvements de stock</h1>
           <div className="flex gap-4">
-           <Dropdown>
+            <Dropdown>
               <DropdownTrigger>
                 <Button endContent={<ChevronDownIcon />} variant="bordered">
                   Importer
@@ -633,6 +641,9 @@ export default function MouvementsPage() {
                 >
                   Info
                 </Button>
+                <Button color="primary" size="sm" onPress={onPrintModalOpen}>
+                  Imprimer
+                </Button>
                 <Button color="danger" size="sm" onPress={handleBulkDelete}>
                   Supprimer la séléction
                 </Button>
@@ -712,6 +723,27 @@ export default function MouvementsPage() {
                     </Button>
                   </div>
                 </ModalFooter>
+              </>
+            )}
+          </ModalContent>
+        </Modal>
+
+        <Modal
+          isOpen={isPrintModalOpen}
+          size="full"
+          onOpenChange={onPrintModalOpenChange}
+        >
+          <ModalContent>
+            {(onClose) => (
+              <>
+                <ModalHeader className="flex flex-col gap-1">
+                  Fiche de Stock - Matiere Premiere
+                </ModalHeader>
+                <ModalBody className="h-dvh">
+                  <PDFViewer height={"100%"}>
+                    <MouvementDoc items={selectedMovements} />
+                  </PDFViewer>
+                </ModalBody>
               </>
             )}
           </ModalContent>
