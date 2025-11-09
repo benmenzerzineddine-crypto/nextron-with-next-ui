@@ -1,6 +1,6 @@
 appId: com.example.nextron
-productName: My Nextron App
-copyright: Copyright © 2018 Yoshihide Shiono
+productName: KDA LOGISTIQUE MP
+copyright: Copyright © 2025 KDA EMBALLAGE
 directories:
   output: dist
   buildResources: resources
@@ -10,3 +10,5 @@ files:
       - package.json
       - app
 publish: null
+win:
+  icon: resources/icon.png

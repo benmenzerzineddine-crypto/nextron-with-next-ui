@@ -16,7 +16,7 @@ import {
   useDisclosure,
 } from "@nextui-org/react";
 import { SearchIcon } from "@/components/icons";
-import TransactionForm from "@/components/TransactionForm";
+import TransactionForm from "@/components/transactionForm";
 import DefaultLayout from "@/layouts/default";
 import Head from "next/head";
 import type { Transaction, StockMovement, Item, Supplier } from "@/types/schema";
