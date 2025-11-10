@@ -228,10 +228,10 @@ export default function StockPage() {
     // @ts-ignore
     const result = await window?.api?.invoke!("generate-excel", data);
     if (result.success) {
-      alert(`Excel file created at: ${result.path}`);
+      alert(`Fichier Excel créé à: ${result.path}`);
     } else {
-      if (result.error !== "Save dialog canceled") {
-        alert(`Error creating Excel file: ${result.error}`);
+      if (result.error !== "Dialogue de sauvegarde annulé") {
+        alert(`Erreur lors de la création du fichier Excel: ${result.error}`);
       }
     }
   };
@@ -323,7 +323,7 @@ export default function StockPage() {
                 await dbApi.create("stockmovement", mouvementPayload);
               }
             } else if ("error" in res) {
-              console.error("Error creating item:", res.error);
+              console.error("Erreur lors de la création de l'article:", res.error);
               alert("Erreur: " + res.error);
             }
           }

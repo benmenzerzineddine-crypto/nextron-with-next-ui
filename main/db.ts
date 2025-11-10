@@ -222,14 +222,10 @@ export const backupDatabase = async () => {
       return { success: false, error: error.message };
     }
   }
-  return { success: false, error: 'Backup cancelled' };
+  return { success: false, error: 'Sauvegarde annulée' };
 };
 
-export const exportTable = async (tableName: string) => {
-  const modelName = tableName.charAt(0).toUpperCase() + tableName.slice(1);
-  const model = sequelize.models[modelName];
-  if (!model) {
-    return { success: false, error: 'Invalid table name' };
+return { success: false, error: 'Nom de table invalide' };
   }
 
   const { filePath, canceled } = await dialog.showSaveDialog({
@@ -266,7 +262,7 @@ export const exportTable = async (tableName: string) => {
       return { success: false, error: error.message };
     }
   }
-  return { success: false, error: 'Export cancelled' };
+  return { success: false, error: 'Exportation annulée' };
 };
 
 export const importTable = async (tableName: string) => {
@@ -308,7 +304,7 @@ export const importTable = async (tableName: string) => {
       return { success: false, error: error.message };
     }
   }
-  return { success: false, error: 'Import cancelled' };
+  return { success: false, error: 'Importation annulée' };
 };
 
 export {

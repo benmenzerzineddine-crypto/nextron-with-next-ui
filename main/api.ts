@@ -67,9 +67,7 @@ const handleCRUD = (model) => {
       if (record) {
         const updated = await record.update(data);
         const plainData = updated.get({ plain: true });
-        return { success: true, data: plainData };
-      }
-      return { success: false, error: "Record not found" };
+return { success: false, error: "Enregistrement non trouvé" };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -160,7 +158,7 @@ ipcMain.handle("generate-excel", async (event, arg) => {
       await excelTemplate.saveAs(filePath);
       return { success: true, path: filePath };
     }
-    return { success: false, error: "Save dialog canceled" };
+    return { success: false, error: "Dialogue de sauvegarde annulé" };
   } catch (error) {
     return { success: false, error: error.message };
   }
