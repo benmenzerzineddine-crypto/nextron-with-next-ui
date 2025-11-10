@@ -225,7 +225,11 @@ export const backupDatabase = async () => {
   return { success: false, error: 'Sauvegarde annulée' };
 };
 
-return { success: false, error: 'Nom de table invalide' };
+export const exportTable = async (tableName: string) => {
+  const modelName = tableName.charAt(0).toUpperCase() + tableName.slice(1);
+  const model = sequelize.models[modelName];
+  if (!model) {
+    return { success: false, error: 'Nom de table invalide' };
   }
 
   const { filePath, canceled } = await dialog.showSaveDialog({

@@ -627,7 +627,10 @@ export default function StockPage() {
                     suppliers={suppliers}
                     locations={locations}
                     onCancel={() => onClose()}
-                    onSubmit={handleCreate}
+                    onSubmit={async (payload) => {
+                      await handleCreate(payload);
+                      onClose();
+                    }}
                   />
                 </ModalBody>
               </>

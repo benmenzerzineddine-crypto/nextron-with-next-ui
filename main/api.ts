@@ -8,8 +8,8 @@ import {
   StockMovement,
   Transaction,
   backupDatabase,
-  exportTable,
   importTable,
+  exportTable
 } from "./db";
 import JsExcelTemplate from "js-excel-template";
 
@@ -67,7 +67,9 @@ const handleCRUD = (model) => {
       if (record) {
         const updated = await record.update(data);
         const plainData = updated.get({ plain: true });
-return { success: false, error: "Enregistrement non trouvé" };
+        return { success: true, data: plainData };
+      }
+      return { success: false, error: "Enregistrement non trouvé" };
     } catch (error) {
       return { success: false, error: error.message };
     }
