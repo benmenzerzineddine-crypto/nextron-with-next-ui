@@ -105,7 +105,7 @@ useEffect(() => {
           type="number"
           value={currentQuantity ?? ""}
           onChange={(e: any) => setCurrentQuantity(e.target.value)}
-          isReadOnly={!!initial?.id}
+          hidden={!!initial?.id}
         />
         <Input
           label="Poids actuel (kg)"
@@ -113,7 +113,7 @@ useEffect(() => {
           type="number"
           value={currentWeight ?? ""}
           onChange={(e: any) => setCurrentWeight(e.target.value)}
-          isReadOnly={!!initial?.id}
+          hidden={!!initial?.id}
         />
         <Autocomplete label="Emplacement" name="location_id" selectedKey={locationId} onSelectionChange={(s) => setLocationId(s as string)} listboxProps={{emptyContent:"Aucun résultat trouvé."}}>
           {locations.map((l) => (

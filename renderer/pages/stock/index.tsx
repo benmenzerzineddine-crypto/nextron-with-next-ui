@@ -264,29 +264,69 @@ export default function StockPage() {
         }
 
         for (const row of importedData) {
-          const type = await types.find((t) => t.name! === row.Type!);
-          const supplier = await suppliers.find((s) => s.name! === row.Fournisseur!);
-          const location = await locations.find((l) => l.name! === row.Emplacement!);
+          const type = types.find((t) => t.name === row.Type);
+          const supplier = suppliers.find((s) => s.name === row.Fournisseur);
+          const location = locations.find((l) => l.name === row.Emplacement);
+
           if (!type || !supplier || !location) {
             console.warn(
-              `Skipping row due to missing type, supplier, or location: ${JSON.stringify(row)}`
+              `Skipping row due to missing type, supplier, or location: ${JSON.stringify(
+                row
+              )}`
             );
             continue;
           }
-          const SKU = `${supplier?.shortName||""}-${type?.shortName||""}-${row.Laise!|| ''}-${row.Grammage!|| ''}`;
-          const Name = `${row.Fournisseur!} ${row.Type!} ${row.Laise!|| ''} ${row.Grammage!|| ''}`;
-          const itemPayload = {
-            name: Name,
-            type_id: type?.id,
-            description: row.Description!,
-            sku: SKU,
-            supplier_id: supplier?.id,
-            height: row.Laise!,
-            grammage: row.Grammage!,
-            location_id: location?.id,
-          };
 
-          await dbApi.create<Item>("item", itemPayload);
+          const SKU = `${supplier?.shortName || ""}-${type?.shortName || ""}-${
+            row.Laise || ""
+          }-${row.Grammage || ""}`;
+          const existingItem = items.find((item) => item.sku === SKU);
+
+          if (existingItem) {
+            if (Number(row.Quantité) > 0) {
+              const mouvementPayload: any = {
+                item_id: existingItem.id,
+                type: "IN",
+                quantity: Number(row.Quantité) ?? 0,
+                weight: Number(row.Poid) ?? 0,
+                date: new Date().toISOString(),
+                notes: "Import from file",
+              };
+              await dbApi.create("stockmovement", mouvementPayload);
+            }
+          } else {
+            const Name = `${row.Fournisseur} ${row.Type} ${row.Laise || ""} ${
+              row.Grammage || ""
+            }`;
+            const itemPayload = {
+              name: Name,
+              type_id: type.id,
+              description: row.Description,
+              sku: SKU,
+              supplier_id: supplier.id,
+              height: row.Laise,
+              grammage: row.Grammage,
+              location_id: location.id,
+            };
+
+            const res = await dbApi.create<Item>("item", itemPayload);
+            if (res.success) {
+              if (row.Quantité && Number(row.Quantité) > 0) {
+                const mouvementPayload: any = {
+                  item_id: res.data.id,
+                  type: "IN",
+                  quantity: Number(row.Quantité),
+                  weight: row.Poid ? Number(row.Poid) : 0,
+                  date: new Date().toISOString(),
+                  notes: "Initial Value from import",
+                };
+                await dbApi.create("stockmovement", mouvementPayload);
+              }
+            } else if ("error" in res) {
+              console.error("Error creating item:", res.error);
+              alert("Erreur: " + res.error);
+            }
+          }
         }
         await refresh();
       };
@@ -309,6 +349,32 @@ export default function StockPage() {
     );
     return items.filter((item) => selectedIds.has(item.id));
   }, [selectedKeys, items]);
+
+  const handleCreate = async (payload) => {
+    if (editingItem) {
+      const res = await dbApi.update<Item>("item", editingItem.id, payload);
+      if (!res.success && "error" in res) alert("Erreur: " + res.error);
+      else await refresh();
+    } else {
+      const res = await dbApi.create<Item>("item", payload);
+      if (res.success) {
+        if (payload.current_quantity && payload.current_quantity > 0) {
+          const mouvementPayload: any = {
+            item_id: res.data.id,
+            type: "IN",
+            quantity: payload.current_quantity,
+            weight: payload.currentWeight ? payload.currentWeight : 0,
+            date: new Date().toISOString(),
+            notes: "Initial Value",
+          };
+          await dbApi.create("stockmovement", mouvementPayload);
+        }
+        await refresh();
+      } else if ("error" in res) {
+        alert("Erreur: " + res.error);
+      }
+    }
+  };
 
   const handleBulkDelete = async () => {
     const deletePromises = selectedItems.map((item) =>
@@ -396,7 +462,11 @@ export default function StockPage() {
   };
 
   const ListForPrint = () => {
-    const table = selectedItems.map((item) => ({...item,current_quantity:CalculateQty(item.StockMovements),current_weight:CalculateWeight(item.StockMovements)}));
+    const table = selectedItems.map((item) => ({
+      ...item,
+      current_quantity: CalculateQty(item.StockMovements),
+      current_weight: CalculateWeight(item.StockMovements),
+    }));
     return table;
   };
 
@@ -557,45 +627,7 @@ export default function StockPage() {
                     suppliers={suppliers}
                     locations={locations}
                     onCancel={() => onClose()}
-                    onSubmit={async (payload) => {
-                      if (editingItem) {
-                        const res = await dbApi.update<Item>(
-                          "item",
-                          editingItem.id,
-                          payload
-                        );
-                        if (!res.success && "error" in res)
-                          alert("Erreur: " + res.error);
-                        else await refresh();
-                      } else {
-                        const res = await dbApi.create<Item>("item", payload);
-                        if (res.success) {
-                          if (
-                            payload.current_quantity &&
-                            payload.current_quantity > 0
-                          ) {
-                            const mouvementPayload: any = {
-                              item_id: res.data.id,
-                              type: "IN",
-                              quantity: payload.current_quantity,
-                              weight: payload.currentWeight
-                                ? payload.currentWeight
-                                : 0,
-                              date: new Date().toISOString(),
-                              notes: "Initial Value",
-                            };
-                            await dbApi.create(
-                              "stockmovement",
-                              mouvementPayload
-                            );
-                          }
-                          await refresh();
-                        } else if ("error" in res) {
-                          alert("Erreur: " + res.error);
-                        }
-                      }
-                      onClose();
-                    }}
+                    onSubmit={handleCreate}
                   />
                 </ModalBody>
               </>
@@ -655,11 +687,7 @@ export default function StockPage() {
                 >
                   Info
                 </Button>
-                <Button
-                  color="primary"
-                  size="sm"
-                  onPress={onPrintModalOpen}
-                >
+                <Button color="primary" size="sm" onPress={onPrintModalOpen}>
                   Imprimer
                 </Button>
                 <Button color="danger" size="sm" onPress={handleBulkDelete}>
@@ -755,13 +783,10 @@ export default function StockPage() {
                   Fiche de Stock - Matiere Premiere
                 </ModalHeader>
                 <ModalBody className="h-dvh">
-                    <PDFViewer height={"100%"}>
-                  <StockDoc items={ListForPrint()}/>
-
-                    </PDFViewer>
-
+                  <PDFViewer height={"100%"}>
+                    <StockDoc items={ListForPrint()} />
+                  </PDFViewer>
                 </ModalBody>
-                
               </>
             )}
           </ModalContent>
